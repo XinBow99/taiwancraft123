@@ -1,0 +1,63 @@
+{
+  "dimensions": {
+    "minecraft:overworld": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "taiwan:taiwan",
+        "biome_source": {
+          "type": "taiwan:taiwan",
+          "ocean": "minecraft:lukewarm_ocean",
+          "beach": "minecraft:beach",
+          "river": "minecraft:river",
+          "plain": "minecraft:plains",
+          "farmland": "minecraft:forest",
+          "hill": "minecraft:bamboo_jungle",
+          "mountain": "minecraft:old_growth_spruce_taiga",
+          "peak": "minecraft:jagged_peaks"
+        },
+        "settings": {
+          "min_y": -64,
+          "world_height": 384,
+          "sea_level": 63,
+          "land_scale": 1500.0,
+          "mountain_scale": 760.0,
+          "mountain_peak": 150,
+          "hill_peak": 46,
+          "river_width": 3.2,
+          "cell": 384,
+          "town_density": 0.42,
+          "block_size": 30,
+          "road_width": 9,
+          "buildings": {
+            "drink_shop": 3,
+            "temple": 1,
+            "market": 2,
+            "tenement": 8,
+            "convenience": 2
+          }
+        }
+      }
+    },
+    "minecraft:the_nether": {
+      "type": "minecraft:the_nether",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "preset": "minecraft:nether"
+        },
+        "settings": "minecraft:nether"
+      }
+    },
+    "minecraft:the_end": {
+      "type": "minecraft:the_end",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:the_end"
+        },
+        "settings": "minecraft:end"
+      }
+    }
+  }
+}

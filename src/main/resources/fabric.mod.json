@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "taiwan",
+	"version": "${version}",
+	"name": "taiwan",
+	"description": "台灣風格世界生成：中央山脈、河谷、海岸平原，以及有騎樓、鐵皮加蓋、電線桿與宮廟夜市的聚落。",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/taiwan/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.xinbow99.taiwan.Taiwan"
+		],
+		"client": [
+			"com.xinbow99.taiwan.client.TaiwanClient"
+		]
+	},
+	"mixins": [
+		"taiwan.mixins.json",
+		{
+			"config": "taiwan.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
