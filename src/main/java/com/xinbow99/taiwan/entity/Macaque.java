@@ -157,8 +157,14 @@ public class Macaque extends PathfinderMob {
      */
     public static boolean spawnRules(EntityType<Macaque> type, ServerLevelAccessor level,
                                      EntitySpawnReason reason, BlockPos pos, RandomSource random) {
-        return level.getBlockState(pos.below()).is(BlockTags.ANIMALS_SPAWNABLE_ON)
-                && level.getRawBrightness(pos, 0) > 8;
+        // ignoresLightRequirements 這個短路**不能省**。CREATURE 類的生物幾乎只在區塊生成
+        // 那一刻生成（EntitySpawnReason.CHUNK_GENERATION），而那時候光照還沒算完，
+        // getRawBrightness 一律回 0。少了它，獼猴永遠一隻都不會自然生成——
+        // 而症狀是「什麼事都沒發生」，沒有任何錯誤訊息。
+        boolean lit = EntitySpawnReason.ignoresLightRequirements(reason)
+                || level.getRawBrightness(pos, 0) > 8;
+        boolean ground = level.getBlockState(pos.below()).is(BlockTags.ANIMALS_SPAWNABLE_ON);
+        return lit && ground;
     }
 
     /** 從樹上掉下來不該摔死——牠整天待在樹上。 */
