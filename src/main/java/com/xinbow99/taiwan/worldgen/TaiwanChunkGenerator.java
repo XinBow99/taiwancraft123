@@ -17,6 +17,9 @@ import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.entity.EntitySpawnReason;
+import com.xinbow99.taiwan.entity.Scooter;
+import com.xinbow99.taiwan.entity.TaiwanEntities;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.BiomeSource;
@@ -386,6 +389,66 @@ public class TaiwanChunkGenerator extends ChunkGenerator {
         WorldgenRandom random = new WorldgenRandom(new LegacyRandomSource(RandomSupport.generateUniqueSeed()));
         random.setDecorationSeed(region.getSeed(), pos.getMinBlockX(), pos.getMinBlockZ());
         NaturalSpawner.spawnMobsForChunkGeneration(region, biome, pos, random);
+
+        parkScooters(region, pos);
+    }
+
+    /**
+     * 街緣的違停機車。
+     *
+     * <h3>為什麼是實體而不是方塊</h3>
+     * <p>它們要能被騎走。做成裝飾方塊的話，玩家只能拆掉它——而「路邊隨手牽一台走」
+     * 正是這條街要給的東西。
+     *
+     * <h3>為什麼在這裡放</h3>
+     * <p>{@link #spawnOriginalMobs} 是區塊生成時唯一拿得到 {@code WorldGenRegion} 的地方，
+     * 也就是唯一能在生成階段放實體的地方。跟原版放牛羊是同一個時機。
+     *
+     * <h3>密度</h3>
+     * <p>每八格街緣一台。看起來很多是對的——台灣的騎樓外緣本來就停滿。但每一台都是一個
+     * 會 tick 的實體，密度再往上會開始吃伺服器，所以停在這個數字。
+     */
+    private void parkScooters(WorldGenRegion region, ChunkPos pos) {
+        if (!saltReady) return;
+
+        int x0 = pos.getMinBlockX();
+        int z0 = pos.getMinBlockZ();
+        Town town = Urban.town(x0 + 8, z0 + 8, settings, salt);
+        if (town == null) return;
+
+        for (int lx = 0; lx < 16; lx++) {
+            for (int lz = 0; lz < 16; lz++) {
+                int x = x0 + lx;
+                int z = z0 + lz;
+                if (!town.paved(x, z)) continue;
+
+                // 只停在街緣那一格，而且不佔路口——真正的違停也不會停在轉角，
+                // 那裡停了車子轉不過去
+                int dx = town.depthX(x);
+                int dz = town.depthZ(z);
+                boolean northSouth = dx == -1 && dz >= 0;
+                boolean eastWest = dz == -1 && dx >= 0;
+                if (!northSouth && !eastWest) continue;
+
+                int along = northSouth ? z : x;
+                if (Math.floorMod(along, 13) == 0) continue;         // 電線桿那一格
+                if (Math.floorMod(Noise.hash(x, salt ^ 0x5C00, z), 8) != 0) continue;
+
+                int ground = Urban.ground(x, z, settings, salt);
+                Scooter scooter = TaiwanEntities.SCOOTER.create(
+                        region.getLevel(), EntitySpawnReason.CHUNK_GENERATION);
+                if (scooter == null) continue;
+
+                // 車頭朝離開馬路的方向，垂直路邊停。抖個幾度是刻意的——
+                // 排得整整齊齊的機車看起來像展示場，不像騎樓外面
+                int side = northSouth ? town.sideX(x) : town.sideZ(z);
+                float yaw = northSouth ? (side > 0 ? 270f : 90f) : (side > 0 ? 0f : 180f);
+                yaw += Math.floorMod(Noise.hash(z, salt ^ 0x2D19, x), 25) - 12;
+
+                scooter.snapTo(x + 0.5, ground + 1, z + 0.5, yaw, 0.0f);
+                region.addFreshEntity(scooter);
+            }
+        }
     }
 
     @Override

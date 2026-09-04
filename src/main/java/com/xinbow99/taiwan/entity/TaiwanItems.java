@@ -35,6 +35,20 @@ public final class TaiwanItems {
     private TaiwanItems() {
     }
 
+    public static final ResourceKey<Item> SCOOTER_KEY =
+            ResourceKey.create(Registries.ITEM, Taiwan.id("scooter"));
+
+    /**
+     * 機車物品。
+     *
+     * <p>用 {@code stacksTo(1)}：一疊 64 台機車在手上很荒謬，而且放置時要決定放哪一台
+     * （每台有自己的車主與損壞值）也講不通。
+     */
+    public static final Item SCOOTER = Registry.register(
+            BuiltInRegistries.ITEM,
+            SCOOTER_KEY,
+            new ScooterItem(new Item.Properties().stacksTo(1).setId(SCOOTER_KEY)));
+
     /**
      * 只是為了觸發這個類別的靜態初始化——註冊發生在上面那個欄位的初始化裡。
      *

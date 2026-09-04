@@ -2,6 +2,8 @@ package com.xinbow99.taiwan.client;
 
 import com.xinbow99.taiwan.client.entity.MacaqueModel;
 import com.xinbow99.taiwan.client.entity.MacaqueRenderer;
+import com.xinbow99.taiwan.client.entity.ScooterModel;
+import com.xinbow99.taiwan.client.entity.ScooterRenderer;
 import com.xinbow99.taiwan.entity.TaiwanEntities;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
@@ -19,5 +21,8 @@ public class TaiwanClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		ModelLayerRegistry.registerModelLayer(MacaqueRenderer.LAYER, MacaqueModel::createBodyLayer);
 		EntityRendererRegistry.register(TaiwanEntities.MACAQUE, MacaqueRenderer::new);
+
+		ModelLayerRegistry.registerModelLayer(ScooterRenderer.LAYER, ScooterModel::createBodyLayer);
+		EntityRendererRegistry.register(TaiwanEntities.SCOOTER, ScooterRenderer::new);
 	}
 }

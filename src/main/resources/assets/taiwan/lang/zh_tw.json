@@ -1,5 +1,7 @@
 {
   "generator.taiwan.taiwan": "台灣",
   "entity.taiwan.macaque": "台灣獼猴",
-  "item.taiwan.macaque_spawn_egg": "台灣獼猴生怪蛋"
+  "entity.taiwan.scooter": "機車",
+  "item.taiwan.macaque_spawn_egg": "台灣獼猴生怪蛋",
+  "item.taiwan.scooter": "機車"
 }

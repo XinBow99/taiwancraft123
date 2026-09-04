@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>模型檢視器</title>
+<script src="models.js"></script>
 <style>
   :root { --bg:#14161a; --fg:#e8e6e3; --dim:#9aa0a6; --line:#2a2f36; }
   body { margin:0; background:var(--bg); color:var(--fg);
@@ -16,61 +17,29 @@
   .meta { margin-top:24px; max-width:1300px; border-top:1px solid var(--line); padding-top:16px;
           color:var(--dim); font-size:13px; }
   .meta code { color:var(--fg); }
+  a { color:#7ab7ff; }
   table { border-collapse:collapse; margin-top:10px; font-size:12px; }
   td, th { border:1px solid var(--line); padding:4px 10px; text-align:left; }
   th { color:var(--fg); }
 </style>
 </head>
 <body>
-<h1>台灣獼猴 — 模型檢視</h1>
-<p class="sub">八個水平角度 ＋ 正側面／正面／俯視。數字直接對應 <code>MacaqueModel.createBodyLayer()</code>。</p>
+<h1 id="title">模型檢視</h1>
+<p class="sub">八個水平角度 ＋ 正側面／正面／俯視。數字直接對應 <code id="src"></code>。<br>
+<a href="?model=macaque">獼猴</a> ｜ <a href="?model=scooter">速克達</a></p>
 <div class="grid" id="grid"></div>
 <div class="meta">
   <div id="dims"></div>
   <table id="parts"></table>
 </div>
 
-<script>
-// ---------------------------------------------------------------- 模型定義
-// Minecraft 模型空間：Y 往下為正，地面在 y = 24。
-// 這裡的每一筆都要跟 MacaqueModel.createBodyLayer() 一字不差。
-const FUR      = '#7d7268';
-const FUR_DARK = '#5f564e';
-const BELLY    = '#a49a8e';
-const SKIN     = '#c98f86';
-const SKIN_DK  = '#ac6f68';
-const PAW      = '#39332f';
-
-// 這張表必須跟 MacaqueModel.createBodyLayer() 一字不差，否則這個工具就沒有意義。
-const PARTS = [
-  // name        parent   box origin        size        pose offset      rot(deg)     color
-  // 軀幹前低後高：獼猴的背是斜的（臀部比肩高），平的背會讀成狗
-  ['body',      null, [-2.5,-2.5,-5],  [5, 5, 10], [0, 15.5, 0],  [-6,0,0],  FUR],
-  // 頭比軀幹窄一格。跟軀幹一樣寬就是娃娃頭
-  ['head',      null, [-2.5,-2.5,-2],  [5, 5, 4],  [0, 12.0, -5.5],[0,0,0], FUR],
-  // 臉不是方塊，是畫在頭部貼圖正面的。這一片只是為了在檢視器裡看得到位置
-  ['face@tex',  'head', [-1,  -0.5,-0.05],[2, 4, 0.05],[0, 0, -2],[0,0,0],  SKIN],
-  // 口鼻凸出去 2 格——猴子的側臉就是靠這塊
-  ['muzzle',    'head', [-1,   0,  -2],  [2, 2, 2],  [0, 0.5, -2], [0,0,0],  SKIN_DK],
-  // 耳朵小而貼頭。做大就變成兩片把手
-  ['ear_l',     'head', [ 0,  -1,  -1],  [1, 2, 2],  [2.5, 0, 0], [0,0,0],   SKIN_DK],
-  ['ear_r',     'head', [-1,  -1,  -1],  [1, 2, 2],  [-2.5, 0, 0],[0,0,0],   SKIN_DK],
-  // 前肢長到構得到地面。比後肢長是獼猴跟狗最明顯的差別
-  ['arm_l',     null, [-1,   0,  -1],   [2, 9, 2],  [2, 14.5, -3.5],[-10,0,0],FUR],
-  ['arm_r',     null, [-1,   0,  -1],   [2, 9, 2],  [-2, 14.5, -3.5],[-10,0,0],FUR],
-  // 後肢屈成一個 Z。直筒後腿是牛
-  ['thigh_l',   null, [-1.5, 0, -1.5],  [3, 4, 3],  [2, 14.5, 3.2],[28,0,0], FUR],
-  ['thigh_r',   null, [-1.5, 0, -1.5],  [3, 4, 3],  [-2, 14.5, 3.2],[28,0,0],FUR],
-  ['shin_l',    'thigh_l', [-1, 0, -1], [2, 5, 2],  [0, 3.6, 1.2],[-34,0,0], FUR],
-  ['shin_r',    'thigh_r', [-1, 0, -1], [2, 5, 2],  [0, 3.6, 1.2],[-34,0,0], FUR],
-  ['foot_l',    'shin_l', [-1,  4.6,-2],[2, 1, 3],  [0, 0, 0],    [0,0,0],   PAW],
-  ['foot_r',    'shin_r', [-1,  4.6,-2],[2, 1, 3],  [0, 0, 0],    [0,0,0],   PAW],
-  // 尾巴分三節、每節同向再彎一點，走成一道連續的弧。
-  // 兩節的話中間會出現一個肘關節，讀起來像旗桿不像尾巴
-  ['tail',      'body', [-1,  -1,   0], [2, 2, 5],  [0, -1.8, 5], [-22,0,0], FUR],
-  ['tail_mid',  'tail', [-0.5,-0.5, 0], [1, 1, 5],  [0, 0, 4.6],  [34,0,0],  FUR],
-  ['tail_tip',  'tail_mid', [-0.5,-0.5,0],[1, 1, 4],[0, 0, 4.6],  [36,0,0],  FUR_DARK],
-];
+// ---------------------------------------------------------------- 模型選擇
+// 模型定義在 models.js。用 ?model=scooter 切換。
+const WHICH = new URLSearchParams(location.search).get('model') || 'macaque';
+const MODEL = MODELS[WHICH] || MODELS.macaque;
+const PARTS = MODEL.parts;
+document.getElementById('title').textContent = MODEL.title + ' — 模型檢視';
+document.getElementById('src').textContent = MODEL.source;
 
 // ---------------------------------------------------------------- 幾何
 const D2R = Math.PI / 180;
@@ -137,7 +106,7 @@ function collect() {
 }
 
 // ---------------------------------------------------------------- 繪製
-const PIVOT = [0, 15, 0];
+const PIVOT = MODEL.pivot;
 function render(canvas, yaw, pitch, scale) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
@@ -198,7 +167,7 @@ for (const [label, yaw, pitch] of VIEWS) {
   const cv = document.createElement('canvas'); cv.width = 300; cv.height = 300;
   const b = document.createElement('b'); b.textContent = label;
   cell.append(cv, b); grid.append(cell);
-  render(cv, yaw, pitch, 9.5);
+  render(cv, yaw, pitch, MODEL.scale);
 }
 
 // 尺寸摘要：把「模型有多高」跟 sized() 對起來，這是最容易做錯的一項

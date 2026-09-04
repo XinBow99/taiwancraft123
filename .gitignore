@@ -41,3 +41,6 @@ replay_*.log
 
 # logs
 logs/
+
+# Windows 的 /dev/null 替身，誤產生的空檔
+nul

@@ -30,6 +30,9 @@ public final class TaiwanEntities {
     public static final ResourceKey<EntityType<?>> MACAQUE_KEY =
             ResourceKey.create(Registries.ENTITY_TYPE, Taiwan.id("macaque"));
 
+    public static final ResourceKey<EntityType<?>> SCOOTER_KEY =
+            ResourceKey.create(Registries.ENTITY_TYPE, Taiwan.id("scooter"));
+
     /**
      * 台灣獼猴。
      *
@@ -55,6 +58,21 @@ public final class TaiwanEntities {
                     .sized(0.7f, 0.9f)
                     .clientTrackingRange(10)
                     .build(MACAQUE_KEY));
+
+    /**
+     * 速克達。
+     *
+     * <p>{@code sized(0.8f, 1.4f)}：寬度**必須小於 1**，否則穿不過一格的縫隙——
+     * 而「鑽得過去」是機車相對於汽車的核心賣點，也是規格書明寫的要求。
+     * 後照鏡在模型上超出這個寬度是刻意的，跟船槳一樣只是視覺。
+     */
+    public static final EntityType<Scooter> SCOOTER = Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,
+            SCOOTER_KEY,
+            EntityType.Builder.<Scooter>of(Scooter::new, MobCategory.MISC)
+                    .sized(0.8f, 1.4f)
+                    .clientTrackingRange(10)
+                    .build(SCOOTER_KEY));
 
     private TaiwanEntities() {
     }
