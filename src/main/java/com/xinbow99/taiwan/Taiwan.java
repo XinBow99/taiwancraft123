@@ -1,13 +1,16 @@
 package com.xinbow99.taiwan;
 
 import com.xinbow99.taiwan.entity.TaiwanEntities;
+import com.xinbow99.taiwan.entity.TaiwanItems;
 import com.xinbow99.taiwan.worldgen.TaiwanBiomeSource;
 import com.xinbow99.taiwan.worldgen.TaiwanChunkGenerator;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +46,23 @@ public class Taiwan implements ModInitializer {
 				TaiwanBiomeSource.CODEC);
 
 		TaiwanEntities.register();
+		TaiwanItems.register();
+
+		// 伺服器一起來就把生態系來源綁好。
+		//
+		// TaiwanBiomeSource 拿不到種子也拿不到參數，原本只在 createBiomes 裡塞進去——
+		// 但那只有「生成新區塊」時才會發生。伺服器重開之後如果沒有任何新區塊被生成，
+		// 它就一直是未綁定狀態，而未綁定時 getNoiseBiome 一律回平原。
+		// 症狀：/locate biome 找不到任何森林或竹林，地圖上的生態系顏色也全錯。
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+			for (ServerLevel level : server.getAllLevels()) {
+				if (level.getChunkSource().getGenerator() instanceof TaiwanChunkGenerator generator
+						&& generator.getBiomeSource() instanceof TaiwanBiomeSource source) {
+					source.bind(generator.settings(),
+							generator.salt(level.getChunkSource().randomState()));
+				}
+			}
+		});
 
 		CommandRegistrationCallback.EVENT.register(
 				(dispatcher, registry, environment) -> TaiwanCommands.register(dispatcher));

@@ -89,26 +89,27 @@ public class MacaqueModel extends EntityModel<MacaqueRenderState> {
                         .addBox(-0.5f, -0.5f, 0.0f, 1, 1, 4),
                 PartPose.offsetAndRotation(0.0f, 0.0f, 4.6f, 36f * Mth.DEG_TO_RAD, 0f, 0f));
 
-        // 頭比軀幹窄一格。跟軀幹一樣寬就是娃娃頭
+        // 頭寬 5。**這個寬度是被眼睛決定的**：臉的正面就是頭的寬度，寬 4 的話兩隻眼睛
+        // 中間留不出一格空隙，在遊戲裡會連成一條黑色橫槓
         PartDefinition head = root.addOrReplaceChild("head",
                 CubeListBuilder.create().texOffs(30, 0)
-                        .addBox(-2.0f, -2.5f, -2.0f, 4, 5, 4),
+                        .addBox(-2.5f, -2.5f, -2.0f, 5, 5, 4),
                 PartPose.offset(0.0f, 12.0f, -5.5f));
 
         // 口鼻：凸出去 2 格。猴子的側臉就是靠這塊
         head.addOrReplaceChild("muzzle",
-                CubeListBuilder.create().texOffs(46, 0)
+                CubeListBuilder.create().texOffs(48, 0)
                         .addBox(-1.0f, 0.0f, -2.0f, 2, 2, 2),
                 PartPose.offset(0.0f, 0.5f, -2.0f));
 
         head.addOrReplaceChild("ear_left",
                 CubeListBuilder.create().texOffs(56, 0)
                         .addBox(0.0f, -1.0f, -1.0f, 1, 2, 2),
-                PartPose.offset(2.0f, 0.0f, 0.0f));
+                PartPose.offset(2.5f, 0.0f, 0.0f));
         head.addOrReplaceChild("ear_right",
                 CubeListBuilder.create().texOffs(56, 0).mirror()
                         .addBox(-1.0f, -1.0f, -1.0f, 1, 2, 2),
-                PartPose.offset(-2.0f, 0.0f, 0.0f));
+                PartPose.offset(-2.5f, 0.0f, 0.0f));
 
         // 前肢：長，構到地面。獼猴的前肢比後肢長，這是牠跟狗最明顯的差別
         root.addOrReplaceChild("arm_left",

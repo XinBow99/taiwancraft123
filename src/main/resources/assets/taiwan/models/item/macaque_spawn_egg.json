@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "taiwan:item/macaque_spawn_egg"
+  }
+}

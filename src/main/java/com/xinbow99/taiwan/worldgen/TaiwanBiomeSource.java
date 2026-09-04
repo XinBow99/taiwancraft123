@@ -77,7 +77,7 @@ public class TaiwanBiomeSource extends BiomeSource {
         this.peak = peak;
     }
 
-    void bind(Settings settings, int salt) {
+    public void bind(Settings settings, int salt) {
         this.settings = settings;
         this.salt = salt;
     }

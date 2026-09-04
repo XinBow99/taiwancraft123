@@ -83,6 +83,6 @@ public final class TaiwanEntities {
                         Biomes.BAMBOO_JUNGLE,
                         Biomes.OLD_GROWTH_SPRUCE_TAIGA,
                         Biomes.FOREST),
-                MobCategory.CREATURE, MACAQUE, 8, 3, 8);
+                MobCategory.CREATURE, MACAQUE, 24, 3, 8);
     }
 }
