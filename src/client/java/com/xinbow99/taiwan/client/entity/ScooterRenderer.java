@@ -45,8 +45,9 @@ public class ScooterRenderer extends EntityRenderer<Scooter, ScooterRenderState>
         Vec3 motion = entity.getDeltaMovement();
         float horizontal = (float) Math.sqrt(motion.x * motion.x + motion.z * motion.z);
         state.wheelSpin = (entity.tickCount + partialTick) * horizontal * 1.6f;
-        state.steer = 0f;
-        state.lean = 0f;
+        state.steer = entity.steerAngle();
+        // 轉彎壓車：龍頭轉多少就傾一半。機車過彎是靠傾的，不傾會像在滑冰
+        state.lean = -entity.steerAngle() * 0.5f;
         state.yRot = entity.getYRot();
     }
 

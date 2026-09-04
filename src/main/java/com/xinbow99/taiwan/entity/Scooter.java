@@ -65,6 +65,9 @@ public class Scooter extends VehicleEntity {
     /** 熄火中。同步給客戶端是為了讓引擎聲與車頭燈跟著停。 */
     private static final EntityDataAccessor<Boolean> DATA_STALLED =
             SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.BOOLEAN);
+    /** 龍頭的視覺角度（度）。要同步，客戶端才畫得出把手轉動。 */
+    private static final EntityDataAccessor<Float> DATA_STEER =
+            SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.FLOAT);
 
     private float speed;
     /** 上一 tick 的速度，撞擊判定用。 */
@@ -79,6 +82,7 @@ public class Scooter extends VehicleEntity {
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(DATA_STALLED, false);
+        builder.define(DATA_STEER, 0f);
     }
 
     // ------------------------------------------------------------------ 車主
@@ -89,6 +93,11 @@ public class Scooter extends VehicleEntity {
 
     public boolean mayRide(Player player) {
         return owner().map(id -> id.equals(player.getUUID())).orElse(true);
+    }
+
+    /** 龍頭角度（度）。算繪器用。 */
+    public float steerAngle() {
+        return this.entityData.get(DATA_STEER);
     }
 
     public boolean stalled() {
@@ -170,6 +179,10 @@ public class Scooter extends VehicleEntity {
             // 沒人騎（或熄火）：很快停住。船那種滑行慣性放在機車上會變成停好之後自己飄走
             this.speed *= wet ? 0.5f : IDLE_FRICTION;
             if (Math.abs(this.speed) < 0.003f) this.speed = 0f;
+            if (!this.level().isClientSide()) {
+                this.entityData.set(DATA_STEER,
+                        Mth.lerp(0.3f, this.entityData.get(DATA_STEER), 0f));
+            }
         }
 
         Vec3 forward = new Vec3(-Mth.sin(this.getYRot() * Mth.DEG_TO_RAD), 0.0,
@@ -201,10 +214,19 @@ public class Scooter extends VehicleEntity {
         float turn = -rider.xxa;
         float gas = rider.zza;
 
-        if (Math.abs(turn) > 0.01f && Math.abs(this.speed) > 0.005f) {
-            float agility = TURN_RATE * (1f - Math.min(Math.abs(this.speed) / MAX_SPEED, 1f) * 0.55f);
-            this.setYRot(this.getYRot() + turn * agility * Math.signum(this.speed));
+        if (Math.abs(turn) > 0.01f) {
+            // 停著也轉得動（慢慢牽），只是比騎起來慢一半。原本要求「速度 > 0」才給轉，
+            // 結果是停下來就完全鎖死，玩起來像卡住
+            float pace = Math.min(Math.abs(this.speed) / MAX_SPEED, 1f);
+            float agility = TURN_RATE * (0.5f + 0.5f * Math.min(pace * 3f, 1f)) * (1f - pace * 0.55f);
+            // **不乘 signum(speed)**：倒車時方向盤反向在真車上成立，但在遊戲裡玩家
+            // 只會覺得「按左卻往右」。一律照按鍵的方向轉
+            this.setYRot(this.getYRot() + turn * agility);
+            this.setYHeadRot(this.getYRot());
         }
+        // 龍頭的視覺角度。平滑地趨近按鍵方向，放手就回正——直接跳到極值會像在抽搐
+        float wanted = Math.abs(turn) > 0.01f ? Math.signum(turn) * 26f : 0f;
+        this.entityData.set(DATA_STEER, Mth.lerp(0.25f, this.entityData.get(DATA_STEER), wanted));
 
         if (gas > 0.01f) {
             this.speed = Math.min(this.speed + THROTTLE, MAX_SPEED);
@@ -276,14 +298,31 @@ public class Scooter extends VehicleEntity {
     public void playerTouch(Player player) {
     }
 
-    /** 引擎聲。熄火時不出聲——那一秒的安靜就是「你把車騎進水裡了」的回饋。 */
+    /**
+     * 引擎聲。
+     *
+     * <h3>怠速也要有聲音</h3>
+     * <p>只在移動時出聲的話，停紅燈那一刻車會變成一塊完全安靜的鐵，玩家會以為熄火了。
+     * 只要有人騎著就一直有聲音，停著時低沉而慢。
+     *
+     * <h3>轉速要靠「間隔」，不能只調音高</h3>
+     * <p>只把音高拉上去，高速聽起來只是同一個聲音變尖。**同時把兩次之間的間隔縮短**，
+     * 「噠噠噠」才會跟著變密——那才聽得出來是轉速上去了。
+     *
+     * <p>熄火時完全不出聲。那一秒的安靜就是「你把車騎進水裡了」的回饋。
+     */
     @Override
     public void baseTick() {
         super.baseTick();
-        if (this.level().isClientSide() || stalled() || Math.abs(this.speed) < 0.02f) return;
-        if (this.tickCount % 6 != 0) return;
+        if (this.level().isClientSide() || stalled()) return;
+        if (this.getControllingPassenger() == null) return;
+
+        float pace = Math.min(Math.abs(this.speed) / MAX_SPEED, 1f);
+        int gap = Math.max(2, Math.round(9f - pace * 7f));
+        if (this.tickCount % gap != 0) return;
+
         this.level().playSound(null, this, SoundEvents.MINECART_INSIDE, SoundSource.NEUTRAL,
-                0.25f, 1.2f + Math.abs(this.speed) * 1.6f);
+                0.18f + pace * 0.45f, 0.62f + pace * 1.5f);
     }
 
     // ------------------------------------------------------------------ 存檔

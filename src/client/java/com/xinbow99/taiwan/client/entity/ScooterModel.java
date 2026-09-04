@@ -7,6 +7,7 @@ import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
 
 /**
@@ -42,7 +43,11 @@ public class ScooterModel extends EntityModel<ScooterRenderState> {
     private final ModelPart wheelRear;
 
     public ScooterModel(ModelPart root) {
-        super(root);
+        // **明確指定不透明且會剔除背面的算繪型別。**
+        // EntityModel 預設是 cutout-no-cull：不剔除背面的話，車殼內側的面會跟外側一起畫，
+        // 兩者深度幾乎重疊就開始互相穿插——看起來就像整台車是半透明的。
+        // 機車沒有任何一片需要鏤空或透明，用 entitySolid 最單純也最穩。
+        super(root, RenderTypes::entitySolid);
         this.steer = root.getChild("steer");
         this.wheelFront = this.steer.getChild("wheel_front");
         this.wheelRear = root.getChild("wheel_rear");
