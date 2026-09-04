@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>模型檢視器</title>
+<style>
+  :root { --bg:#14161a; --fg:#e8e6e3; --dim:#9aa0a6; --line:#2a2f36; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:14px/1.6 "Noto Sans TC", system-ui, sans-serif; padding:24px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  p.sub { color:var(--dim); margin:0 0 20px; }
+  .grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; max-width:1300px; }
+  .cell { background:#1b1e24; border:1px solid var(--line); border-radius:6px; padding:8px; }
+  .cell canvas { display:block; width:100%; height:auto; image-rendering:pixelated; }
+  .cell b { display:block; font-size:12px; color:var(--dim); text-align:center; padding-top:6px; }
+  .meta { margin-top:24px; max-width:1300px; border-top:1px solid var(--line); padding-top:16px;
+          color:var(--dim); font-size:13px; }
+  .meta code { color:var(--fg); }
+  table { border-collapse:collapse; margin-top:10px; font-size:12px; }
+  td, th { border:1px solid var(--line); padding:4px 10px; text-align:left; }
+  th { color:var(--fg); }
+</style>
+</head>
+<body>
+<h1>台灣獼猴 — 模型檢視</h1>
+<p class="sub">八個水平角度 ＋ 正側面／正面／俯視。數字直接對應 <code>MacaqueModel.createBodyLayer()</code>。</p>
+<div class="grid" id="grid"></div>
+<div class="meta">
+  <div id="dims"></div>
+  <table id="parts"></table>
+</div>
+
+<script>
+// ---------------------------------------------------------------- 模型定義
+// Minecraft 模型空間：Y 往下為正，地面在 y = 24。
+// 這裡的每一筆都要跟 MacaqueModel.createBodyLayer() 一字不差。
+const FUR      = '#7d7268';
+const FUR_DARK = '#5f564e';
+const BELLY    = '#a49a8e';
+const SKIN     = '#c98f86';
+const SKIN_DK  = '#ac6f68';
+const PAW      = '#39332f';
+
+// 這張表必須跟 MacaqueModel.createBodyLayer() 一字不差，否則這個工具就沒有意義。
+const PARTS = [
+  // name        parent   box origin        size        pose offset      rot(deg)     color
+  // 軀幹前低後高：獼猴的背是斜的（臀部比肩高），平的背會讀成狗
+  ['body',      null, [-2.5,-2.5,-5],  [5, 5, 10], [0, 15.5, 0],  [-6,0,0],  FUR],
+  // 頭比軀幹窄一格。跟軀幹一樣寬就是娃娃頭
+  ['head',      null, [-2,  -2.5,-2],  [4, 5, 4],  [0, 12.0, -5.5],[0,0,0], FUR],
+  // 臉不是方塊，是畫在頭部貼圖正面的。這一片只是為了在檢視器裡看得到位置
+  ['face@tex',  'head', [-1,  -0.5,-0.05],[2, 4, 0.05],[0, 0, -2],[0,0,0],  SKIN],
+  // 口鼻凸出去 2 格——猴子的側臉就是靠這塊
+  ['muzzle',    'head', [-1,   0,  -2],  [2, 2, 2],  [0, 0.5, -2], [0,0,0],  SKIN_DK],
+  // 耳朵小而貼頭。做大就變成兩片把手
+  ['ear_l',     'head', [ 0,  -1,  -1],  [1, 2, 2],  [2, 0, 0],   [0,0,0],   SKIN_DK],
+  ['ear_r',     'head', [-1,  -1,  -1],  [1, 2, 2],  [-2, 0, 0],  [0,0,0],   SKIN_DK],
+  // 前肢長到構得到地面。比後肢長是獼猴跟狗最明顯的差別
+  ['arm_l',     null, [-1,   0,  -1],   [2, 9, 2],  [2, 14.5, -3.5],[-10,0,0],FUR],
+  ['arm_r',     null, [-1,   0,  -1],   [2, 9, 2],  [-2, 14.5, -3.5],[-10,0,0],FUR],
+  // 後肢屈成一個 Z。直筒後腿是牛
+  ['thigh_l',   null, [-1.5, 0, -1.5],  [3, 4, 3],  [2, 14.5, 3.2],[28,0,0], FUR],
+  ['thigh_r',   null, [-1.5, 0, -1.5],  [3, 4, 3],  [-2, 14.5, 3.2],[28,0,0],FUR],
+  ['shin_l',    'thigh_l', [-1, 0, -1], [2, 5, 2],  [0, 3.6, 1.2],[-34,0,0], FUR],
+  ['shin_r',    'thigh_r', [-1, 0, -1], [2, 5, 2],  [0, 3.6, 1.2],[-34,0,0], FUR],
+  ['foot_l',    'shin_l', [-1,  4.6,-2],[2, 1, 3],  [0, 0, 0],    [0,0,0],   PAW],
+  ['foot_r',    'shin_r', [-1,  4.6,-2],[2, 1, 3],  [0, 0, 0],    [0,0,0],   PAW],
+  // 尾巴分三節、每節同向再彎一點，走成一道連續的弧。
+  // 兩節的話中間會出現一個肘關節，讀起來像旗桿不像尾巴
+  ['tail',      'body', [-1,  -1,   0], [2, 2, 5],  [0, -1.8, 5], [-22,0,0], FUR],
+  ['tail_mid',  'tail', [-0.5,-0.5, 0], [1, 1, 5],  [0, 0, 4.6],  [34,0,0],  FUR],
+  ['tail_tip',  'tail_mid', [-0.5,-0.5,0],[1, 1, 4],[0, 0, 4.6],  [36,0,0],  FUR_DARK],
+];
+
+// ---------------------------------------------------------------- 幾何
+const D2R = Math.PI / 180;
+
+function mul(a, b) {                       // 4x3 仿射矩陣（列主序，最後一列是平移）
+  const o = new Array(12);
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++)
+    o[r*3+c] = a[r*3]*b[c] + a[r*3+1]*b[3+c] + a[r*3+2]*b[6+c];
+  for (let c = 0; c < 3; c++)
+    o[9+c] = a[9]*b[c] + a[10]*b[3+c] + a[11]*b[6+c] + b[9+c];
+  return o;
+}
+const IDENT = [1,0,0, 0,1,0, 0,0,1, 0,0,0];
+function trs(off, rot) {
+  const [rx, ry, rz] = rot.map(d => d * D2R);
+  const cx=Math.cos(rx), sx=Math.sin(rx), cy=Math.cos(ry), sy=Math.sin(ry),
+        cz=Math.cos(rz), sz=Math.sin(rz);
+  const X=[1,0,0, 0,cx,-sx, 0,sx,cx, 0,0,0];
+  const Y=[cy,0,sy, 0,1,0, -sy,0,cy, 0,0,0];
+  const Z=[cz,-sz,0, sz,cz,0, 0,0,1, 0,0,0];
+  const T=[1,0,0, 0,1,0, 0,0,1, off[0],off[1],off[2]];
+  return mul(mul(mul(Z, Y), X), T);
+}
+function apply(m, p) {
+  return [ m[0]*p[0]+m[3]*p[1]+m[6]*p[2]+m[9],
+           m[1]*p[0]+m[4]*p[1]+m[7]*p[2]+m[10],
+           m[2]*p[0]+m[5]*p[1]+m[8]*p[2]+m[11] ];
+}
+
+const world = {};
+function worldOf(part) {
+  const [name, parent, , , off, rot] = part;
+  if (world[name]) return world[name];
+  const local = trs(off, rot);
+  const base = parent ? worldOf(PARTS.find(p => p[0] === parent)) : IDENT;
+  return world[name] = mul(local, base);
+}
+
+// 一個盒子的 6 個面（頂點索引 + 法線）
+const FACES = [
+  [[0,1,3,2], [0,0,-1]], [[5,4,6,7], [0,0,1]],
+  [[4,0,2,6], [-1,0,0]], [[1,5,7,3], [1,0,0]],
+  [[4,5,1,0], [0,-1,0]], [[2,3,7,6], [0,1,0]],
+];
+
+function collect() {
+  const quads = [];
+  for (const part of PARTS) {
+    const [, , org, size, , , color] = part;
+    const m = worldOf(part);
+    const c = [];
+    for (let i = 0; i < 8; i++) {
+      c.push(apply(m, [
+        org[0] + ((i & 1) ? size[0] : 0),
+        org[1] + ((i & 4) ? size[1] : 0),
+        org[2] + ((i & 2) ? size[2] : 0),
+      ]));
+    }
+    for (const [idx, n] of FACES) {
+      quads.push({ pts: idx.map(i => c[i]), n: apply({...m, 9:0,10:0,11:0, length:12}, n), color });
+    }
+  }
+  return quads;
+}
+
+// ---------------------------------------------------------------- 繪製
+const PIVOT = [0, 15, 0];
+function render(canvas, yaw, pitch, scale) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // 地面格線，用來判斷比例
+  ctx.strokeStyle = '#262b32'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 6; i++) {
+    const y = H * 0.5 + (24 - PIVOT[1]) * scale - i * scale * 2;
+    ctx.beginPath(); ctx.moveTo(8, y); ctx.lineTo(W - 8, y); ctx.stroke();
+  }
+
+  const cy = Math.cos(yaw*D2R), sy = Math.sin(yaw*D2R);
+  const cp = Math.cos(pitch*D2R), sp = Math.sin(pitch*D2R);
+  const view = p => {
+    let x = p[0]-PIVOT[0], y = p[1]-PIVOT[1], z = p[2]-PIVOT[2];
+    let x2 =  x*cy + z*sy, z2 = -x*sy + z*cy;
+    let y2 =  y*cp - z2*sp, z3 = y*sp + z2*cp;
+    return [x2, y2, z3];
+  };
+
+  const quads = collect().map(q => {
+    const v = q.pts.map(view);
+    const nv = view([q.n[0]+PIVOT[0], q.n[1]+PIVOT[1], q.n[2]+PIVOT[2]]);
+    return { v, depth: v.reduce((s,p)=>s+p[2],0)/4, n: nv, color: q.color };
+  }).sort((a,b) => b.depth - a.depth);
+
+  for (const q of quads) {
+    // 平光：法線朝上最亮、朝下最暗，左右取中間
+    const lit = 0.80 + 0.42 * Math.max(0, -q.n[1] / (Math.hypot(...q.n) || 1));
+    ctx.fillStyle = shade(q.color, lit);
+    ctx.strokeStyle = shade(q.color, lit * 0.72);
+    ctx.beginPath();
+    q.v.forEach((p, i) => {
+      const sx = W/2 + p[0]*scale, sYy = H/2 + p[1]*scale;
+      i ? ctx.lineTo(sx, sYy) : ctx.moveTo(sx, sYy);
+    });
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = c => Math.min(255, Math.round(c * k));
+  return `rgb(${f(n>>16 & 255)},${f(n>>8 & 255)},${f(n & 255)})`;
+}
+
+// ---------------------------------------------------------------- 版面
+const VIEWS = [
+  ['正面 0°',   0,  12], ['右前 45°', 45, 12], ['右側 90°', 90, 12], ['右後 135°',135,12],
+  ['背面 180°',180,12], ['左後 225°',225,12], ['左側 270°',270,12], ['左前 315°',315,12],
+  ['正側（無俯角）', 90, 0], ['正面（無俯角）', 0, 0],
+  ['俯視', 0, 82], ['仰視', 0, -55],
+];
+const grid = document.getElementById('grid');
+for (const [label, yaw, pitch] of VIEWS) {
+  const cell = document.createElement('div'); cell.className = 'cell';
+  const cv = document.createElement('canvas'); cv.width = 300; cv.height = 300;
+  const b = document.createElement('b'); b.textContent = label;
+  cell.append(cv, b); grid.append(cell);
+  render(cv, yaw, pitch, 9.5);
+}
+
+// 尺寸摘要：把「模型有多高」跟 sized() 對起來，這是最容易做錯的一項
+let minY = 99, maxY = -99, minX = 99, maxX = -99, minZ = 99, maxZ = -99;
+for (const part of PARTS) {
+  const [, , org, size] = part, m = worldOf(part);
+  for (let i = 0; i < 8; i++) {
+    const p = apply(m, [org[0]+((i&1)?size[0]:0), org[1]+((i&4)?size[1]:0), org[2]+((i&2)?size[2]:0)]);
+    minY=Math.min(minY,p[1]); maxY=Math.max(maxY,p[1]);
+    minX=Math.min(minX,p[0]); maxX=Math.max(maxX,p[0]);
+    minZ=Math.min(minZ,p[2]); maxZ=Math.max(maxZ,p[2]);
+  }
+}
+const px = v => v.toFixed(1);
+document.getElementById('dims').innerHTML =
+  `模型高 <code>${px(maxY-minY)}</code> px ＝ <code>${((maxY-minY)/16).toFixed(2)}</code> 格　|　` +
+  `寬 <code>${px(maxX-minX)}</code> px ＝ <code>${((maxX-minX)/16).toFixed(2)}</code> 格　|　` +
+  `長 <code>${px(maxZ-minZ)}</code> px ＝ <code>${((maxZ-minZ)/16).toFixed(2)}</code> 格<br>` +
+  `腳底 y=<code>${px(maxY)}</code>（要貼齊 24）　頭頂 y=<code>${px(minY)}</code>`;
+
+const tbl = document.getElementById('parts');
+tbl.innerHTML = '<tr><th>部位</th><th>尺寸 w×h×d</th><th>貼圖面積</th></tr>' +
+  PARTS.map(p => `<tr><td>${p[0]}</td><td>${p[3].join('×')}</td>` +
+    `<td>${2*(p[3][2]+p[3][0])}×${p[3][2]+p[3][1]}</td></tr>`).join('');
+</script>
+</body>
+</html>
