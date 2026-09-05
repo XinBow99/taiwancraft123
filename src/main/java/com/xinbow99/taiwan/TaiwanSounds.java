@@ -27,6 +27,19 @@ public final class TaiwanSounds {
     public static final SoundEvent SCOOTER_ENGINE = create("scooter_engine");
     public static final SoundEvent SCOOTER_START = create("scooter_start");
 
+    /**
+     * 8+9 成團時放的歌（6 分 33 秒，循環）。
+     *
+     * <p>**單聲道**是硬性要求，不是為了省空間：Minecraft 只會對單聲道的音源做距離與
+     * 方位衰減，立體聲檔案會變成「不管你走多遠都一樣大聲、而且沒有方向」的背景音。
+     * 這首歌是要從那一團人身上放出來的，方位必須是對的。
+     *
+     * <p>{@code stream: true}（見 sounds.json）：3.3 MB 的檔案不要整個載進記憶體。
+     * 原版的唱片也是這樣設定的。
+     */
+    public static final SoundEvent EIGHTNINE_ANTHEM = create("eightnine_anthem");
+    public static final SoundEvent EIGHTNINE_HURT = create("eightnine_hurt");
+
     private static SoundEvent create(String name) {
         Identifier id = Taiwan.id(name);
         // createVariableRangeEvent：傳播距離跟著音量走。引擎聲的音量會隨著轉速變，

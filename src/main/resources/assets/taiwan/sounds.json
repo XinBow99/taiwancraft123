@@ -1,16 +1,40 @@
 {
+  "eightnine_anthem": {
+    "category": "record",
+    "subtitle": "subtitles.taiwan.eightnine_anthem",
+    "sounds": [
+      {
+        "name": "taiwan:eightnine_anthem",
+        "stream": true
+      }
+    ]
+  },
+  "eightnine_hurt": {
+    "category": "neutral",
+    "subtitle": "subtitles.taiwan.eightnine_hurt",
+    "sounds": [
+      {
+        "name": "minecraft:entity.villager.hurt"
+      }
+    ]
+  },
   "scooter_engine": {
     "category": "neutral",
     "subtitle": "subtitles.taiwan.scooter_engine",
     "sounds": [
-      { "name": "taiwan:scooter_engine", "stream": false }
+      {
+        "name": "taiwan:scooter_engine",
+        "stream": false
+      }
     ]
   },
   "scooter_start": {
     "category": "neutral",
     "subtitle": "subtitles.taiwan.scooter_start",
     "sounds": [
-      { "name": "taiwan:scooter_start" }
+      {
+        "name": "taiwan:scooter_start"
+      }
     ]
   }
 }

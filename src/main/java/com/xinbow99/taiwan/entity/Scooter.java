@@ -231,6 +231,11 @@ public class Scooter extends VehicleEntity {
     /** 水平速度向量（世界座標）。由第二層的 speed／lateralSpeed 與車頭方向組出來。 */
     private Vec3 planar = Vec3.ZERO;
 
+    /** AI 騎士的轉向輸入。玩家騎的時候不看它。 */
+    private float aiSteer;
+    /** AI 騎士的油門輸入。 */
+    private float aiThrottle;
+
     /** 甩尾已經撐了幾 tick。放開時用它決定給不給加速。 */
     private int driftTicks;
     /** 加速還剩幾 tick。 */
@@ -333,7 +338,23 @@ public class Scooter extends VehicleEntity {
 
     @Override
     public LivingEntity getControllingPassenger() {
-        return this.getFirstPassenger() instanceof Player player ? player : null;
+        // 玩家或 8+9 都騎得動。回傳 null 的話這台車在物理上等於沒人騎
+        return this.getFirstPassenger() instanceof Player player ? player
+                : this.getFirstPassenger() instanceof EightNine guy ? guy : null;
+    }
+
+    /**
+     * AI 騎士的輸入（轉向 −1~1 往右為正、油門 −1~1）。
+     *
+     * <p>玩家的輸入是從 {@code xxa}/{@code zza} 讀的——那是「按鍵」的欄位，
+     * 生物身上沒有意義的值。所以 AI 走另一條路：由 goal 直接寫這兩個欄位。
+     *
+     * <p>**轉向的語意跟玩家那條一致**：都是「龍頭要打幾成」，而不是「車身要轉多少」。
+     * 走另一條語意的話，AI 騎的車跟玩家騎的車物理會不一樣，那就等於兩台車。
+     */
+    public void setAiInput(float steer, float throttle) {
+        this.aiSteer = Mth.clamp(steer, -1f, 1f);
+        this.aiThrottle = Mth.clamp(throttle, -1f, 1f);
     }
 
     /**
@@ -469,11 +490,24 @@ public class Scooter extends VehicleEntity {
      * 過彎時會抖。
      */
     private void tickPhysics(boolean wet) {
-        Player rider = !wet && this.getControllingPassenger() instanceof Player p ? p : null;
+        LivingEntity pilot = wet ? null : this.getControllingPassenger();
+        Player rider = pilot instanceof Player p ? p : null;
 
         // ---- 1. 輸入：油門與龍頭 -------------------------------------------------
-        float steerInput = rider != null ? Mth.clamp(-rider.xxa, -1f, 1f) : 0f;
-        this.throttle = rider != null ? Mth.clamp(rider.zza, -1f, 1f) : 0f;
+        //
+        // 玩家讀按鍵欄位（xxa/zza），AI 讀 setAiInput 寫進來的值。兩條路在這裡就合流，
+        // 下面的物理完全不知道騎士是誰——AI 騎的車跟玩家騎的車是同一套物理
+        float steerInput;
+        if (rider != null) {
+            steerInput = Mth.clamp(-rider.xxa, -1f, 1f);
+            this.throttle = Mth.clamp(rider.zza, -1f, 1f);
+        } else if (pilot != null) {
+            steerInput = this.aiSteer;
+            this.throttle = this.aiThrottle;
+        } else {
+            steerInput = 0f;
+            this.throttle = 0f;
+        }
         updateDrift(rider, steerInput);
         if (this.boostTicks > 0) this.boostTicks--;
 
@@ -486,7 +520,7 @@ public class Scooter extends VehicleEntity {
         }
 
         // ---- 2. 動力學：輪胎力 → 加速度與角加速度 → 積分 -------------------------
-        boolean ridden = rider != null;
+        boolean ridden = pilot != null;
         for (int i = 0; i < SUBSTEPS; i++) {
             integrate(1.0 / SUBSTEPS, ridden, wet);
         }

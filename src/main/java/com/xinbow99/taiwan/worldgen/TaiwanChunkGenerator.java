@@ -18,6 +18,8 @@ import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
+import com.xinbow99.taiwan.entity.EightNine;
+import com.xinbow99.taiwan.entity.EightNineVariant;
 import com.xinbow99.taiwan.entity.Scooter;
 import com.xinbow99.taiwan.entity.TaiwanEntities;
 import net.minecraft.world.level.biome.Biome;
@@ -391,6 +393,7 @@ public class TaiwanChunkGenerator extends ChunkGenerator {
         NaturalSpawner.spawnMobsForChunkGeneration(region, biome, pos, random);
 
         parkScooters(region, pos);
+        gatherEightNine(region, pos);
     }
 
     /**
@@ -448,6 +451,69 @@ public class TaiwanChunkGenerator extends ChunkGenerator {
                 scooter.snapTo(x + 0.5, ground + 1, z + 0.5, yaw, 0.0f);
                 region.addFreshEntity(scooter);
             }
+        }
+    }
+
+    /**
+     * 聚落裡的 8+9。
+     *
+     * <h3>為什麼不是靠生態系的 spawner</h3>
+     * <p>{@code BiomeModifications.addSpawn} 是「整個生態系隨機灑」，而聚落只佔平原的
+     * 很小一部分——灑出去的絕大多數會落在野外的草地上，聚落裡反而空的。這就是
+     * 「聚落都沒東西」的原因。這裡改成跟違停機車同一個作法：**認得出街道的地方才放**。
+     *
+     * <h3>成團是被生成保證的，不是碰運氣</h3>
+     * <p>一次放 3~5 個、擠在同一個路口的兩三格內。{@link EightNine#CROWD} 是 3——
+     * 一次放一個的話成團永遠不會發生，玩家只會看到落單的，看不到這個實體真正的樣子。
+     * 同一團也刻意同型（同一個 hash 決定），一團全部白衣白褲才像一個陣頭。
+     *
+     * <h3>密度</h3>
+     * <p>每個區塊最多一團，而且要擲中 1/7。1/3 試過，整條街都是人——一個聚落上百個區塊，
+     * 三分之一都放一團就是三、四百個會 tick 的實體。
+     */
+    private void gatherEightNine(WorldGenRegion region, ChunkPos pos) {
+        if (!saltReady) return;
+
+        int x0 = pos.getMinBlockX();
+        int z0 = pos.getMinBlockZ();
+        Town town = Urban.town(x0 + 8, z0 + 8, settings, salt);
+        if (town == null) return;
+        if (Math.floorMod(Noise.hash(x0, salt ^ 0x89A9, z0), 7) != 0) return;
+
+        // 找這個區塊裡第一格鋪面當集合點。找不到就算了——那代表這塊只碰到聚落邊緣
+        int spotX = Integer.MIN_VALUE;
+        int spotZ = 0;
+        outer:
+        for (int lx = 2; lx < 14; lx++) {
+            for (int lz = 2; lz < 14; lz++) {
+                if (town.paved(x0 + lx, z0 + lz)) {
+                    spotX = x0 + lx;
+                    spotZ = z0 + lz;
+                    break outer;
+                }
+            }
+        }
+        if (spotX == Integer.MIN_VALUE) return;
+
+        EightNineVariant look = EightNineVariant.byId(
+                Math.floorMod(Noise.hash(spotX, salt ^ 0x1F09, spotZ), 6));
+        int count = 3 + Math.floorMod(Noise.hash(spotZ, salt ^ 0x77B1, spotX), 2);
+
+        for (int i = 0; i < count; i++) {
+            // 散在集合點周圍三格內，不是疊在同一格
+            int dx = Math.floorMod(Noise.hash(spotX + i, salt ^ 0x4E21, spotZ), 5) - 2;
+            int dz = Math.floorMod(Noise.hash(spotX, salt ^ 0x4E21, spotZ + i), 5) - 2;
+            int x = spotX + dx;
+            int z = spotZ + dz;
+            if (!town.paved(x, z)) continue;
+
+            EightNine guy = TaiwanEntities.EIGHTNINE.create(
+                    region.getLevel(), EntitySpawnReason.CHUNK_GENERATION);
+            if (guy == null) continue;
+            guy.setVariant(look);
+            guy.snapTo(x + 0.5, Urban.ground(x, z, settings, salt) + 1, z + 0.5,
+                    Math.floorMod(Noise.hash(z, salt ^ 0x33C7, x), 360), 0.0f);
+            region.addFreshEntity(guy);
         }
     }
 

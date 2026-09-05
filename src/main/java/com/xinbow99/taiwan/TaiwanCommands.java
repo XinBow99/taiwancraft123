@@ -1,5 +1,10 @@
 package com.xinbow99.taiwan;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.xinbow99.taiwan.entity.EightNine;
+import com.xinbow99.taiwan.entity.EightNineVariant;
+import com.xinbow99.taiwan.entity.TaiwanEntities;
+import net.minecraft.world.entity.EntitySpawnReason;
 import com.mojang.brigadier.CommandDispatcher;
 import com.xinbow99.taiwan.worldgen.Settings;
 import com.xinbow99.taiwan.worldgen.TaiwanChunkGenerator;
@@ -27,6 +32,9 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class TaiwanCommands {
 
+    /** {@code /taiwan gather} 不帶參數時放幾個。要大於成團門檻，不然看不出效果。 */
+    private static final int GATHER_DEFAULT = 5;
+
     /** 最多往外掃幾圈網格。12 圈 ＝ 半徑約 4600 格，夠遠了。 */
     private static final int RINGS = 12;
 
@@ -41,7 +49,47 @@ public final class TaiwanCommands {
                         .then(Commands.literal("temple")
                                 .executes(ctx -> locate(ctx.getSource(), Urban.Lot.TEMPLE)))
                         .then(Commands.literal("market")
-                                .executes(ctx -> locate(ctx.getSource(), Urban.Lot.MARKET)))));
+                                .executes(ctx -> locate(ctx.getSource(), Urban.Lot.MARKET))))
+                .then(Commands.literal("gather")
+                        .executes(ctx -> gather(ctx.getSource(), 5))
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 20))
+                                .executes(ctx -> gather(ctx.getSource(),
+                                        IntegerArgumentType.getInteger(ctx, "count"))))));
+    }
+
+    /**
+     * 在腳邊放一團 8+9。
+     *
+     * <h3>為什麼需要這個指令</h3>
+     * <p>8+9 是**在區塊第一次生成時**放的（跟違停機車同一個時機）。已經探索過的聚落
+     * 不會回填——那些區塊早就生成完了。而 {@code MobCategory.CREATURE} 之後幾乎不會
+     * 自然補生（原版的動物也是這樣，殺光就不會再有）。
+     *
+     * <p>所以要驗證這個實體，要嘛去沒去過的聚落，要嘛用這個指令。一次放 {@value #GATHER_DEFAULT}
+     * 個是刻意的：成團門檻是三個人，放一個看不出這個實體真正的樣子。
+     */
+    private static int gather(CommandSourceStack source, int count) {
+        ServerLevel level = source.getLevel();
+        Vec3 at = source.getPosition();
+        EightNineVariant look = EightNineVariant.random(level.getRandom());
+
+        int placed = 0;
+        for (int i = 0; i < count; i++) {
+            EightNine guy = TaiwanEntities.EIGHTNINE.create(level, EntitySpawnReason.COMMAND);
+            if (guy == null) continue;
+            // 散在三格內，不是疊在同一格
+            double dx = (level.getRandom().nextDouble() - 0.5) * 5.0;
+            double dz = (level.getRandom().nextDouble() - 0.5) * 5.0;
+            guy.setVariant(look);
+            guy.snapTo(at.x + dx, at.y, at.z + dz, level.getRandom().nextFloat() * 360f, 0f);
+            if (level.addFreshEntity(guy)) placed++;
+        }
+
+        int done = placed;
+        source.sendSuccess(() -> Component.literal(
+                "放了 " + done + " 個 8+9（" + look.getSerializedName() + "）"
+                        + (done >= EightNine.CROWD ? "　夠成團，等一下就會放歌" : "　不夠三個，不會成團")), false);
+        return placed;
     }
 
     private static int locate(CommandSourceStack source, Urban.Lot want) {

@@ -42,6 +42,20 @@ public final class Palette {
     /** 黃色的禁停線，畫在街緣。台灣的路緣不是紅就是黃。 */
     public static final BlockState CURB_LINE = Blocks.CONCRETE.yellow().defaultBlockState();
     public static final BlockState SIDEWALK_BRICK = Blocks.BRICKS.defaultBlockState();
+
+    /**
+     * 這一格是不是街道的鋪面。
+     *
+     * <p>問這裡而不是在別的檔案裡列一次方塊清單：鋪面用哪些方塊是這個檔案的知識，
+     * 改了鋪面的材質卻忘記改另一邊的清單，是那種找很久的 bug。
+     *
+     * <p>混凝土在自然地形完全不會出現，所以這個判斷等於「這裡是聚落的街道」——
+     * 8+9 的自然生成就是靠它把範圍收在街上（見 {@code TaiwanEntities}）。
+     */
+    public static boolean isPaving(BlockState state) {
+        return state.is(ASPHALT.getBlock()) || state.is(PAVEMENT.getBlock())
+                || state.is(ROAD_LINE.getBlock()) || state.is(CURB_LINE.getBlock());
+    }
     public static final BlockState CURB = Blocks.SMOOTH_STONE_SLAB.defaultBlockState();
     public static final BlockState IRON_GRILLE = Blocks.IRON_BARS.defaultBlockState();
     public static final BlockState GLASS = Blocks.GLASS.defaultBlockState();
