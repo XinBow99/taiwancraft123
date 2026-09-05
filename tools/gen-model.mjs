@@ -38,10 +38,10 @@ const SLOT = {
   '#26282c': 'SHIRT', '#191b1f': 'SHIRT_DK', '#4a5a74': 'PANTS', '#37455c': 'PANTS_DK',
   '#e8e8ea': 'SHOE', '#c2c2c6': 'SHOE_DK', '#f2f2f4': 'WHITE89', '#8a6b3f': 'ACCENT',
   // 兩款跑車（各八格，共用同一組槽位名稱——貼圖不同、版型相同）
-  '#c8d42a': 'PAINT', '#1b1d20': 'DARK', '#2a3138': 'GLASS', '#eef2f4': 'LAMP',
-  '#d2342c': 'RED', '#141416': 'TIRE', '#c9ccd0': 'RIM', '#b0b6bc': 'CHROME',
-  '#1f3f7a': 'PAINT', '#15171a': 'DARK', '#28303a': 'GLASS',
-  '#c93028': 'RED', '#cfd4d8': 'CHROME',
+  '#f2c318': 'PAINT', '#161719': 'DARK', '#232a31': 'GLASS', '#f2f5f7': 'LAMP',
+  '#d2342c': 'RED', '#141416': 'TIRE', '#5f656b': 'RIM', '#b0b6bc': 'CHROME',
+  '#1f4fc8': 'PAINT', '#15171a': 'DARK', '#28303a': 'GLASS',
+  '#c93028': 'RED', '#6e747a': 'RIM', '#cfd4d8': 'CHROME',
 };
 
 // models.js 的簡寫 → Java 的完整零件名（給 setupAnim 抓得到）

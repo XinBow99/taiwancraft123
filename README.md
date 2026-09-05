@@ -86,8 +86,8 @@ level-type=taiwan:taiwan
 |---|---|---|---|
 | `taiwan:scooter` | 速克達 | 120 km/h | 5 秒 |
 | `taiwan:cygnus` | 勁戰四代 125 | 120 km/h | 5 秒 |
-| `taiwan:lanbao` | 藍爆堅尼 | 260 km/h | 3.4 秒 |
-| `taiwan:mashala` | 馬莎拉蹄 | 240 km/h | 4.2 秒 |
+| `taiwan:lanbao` | 藍爆堅尼（黃、楔形中置引擎） | 260 km/h | 3.4 秒 |
+| `taiwan:mashala` | 馬莎拉蹄（藍、斜背雙門） | 240 km/h | 4.2 秒 |
 
 街邊會生成違停的機車，右鍵直接騎走；第一個騎上去的人就是車主，別人騎不走。
 兩款跑車目前只能用 `/give` 拿。
@@ -237,6 +237,7 @@ Phase 1 的地形與聚落**不需要客戶端裝模組**：`CHUNK_GENERATOR` �
 node tools/serve.mjs                          # http://localhost:8731/?model=cygnus
 BG=light node tools/render.mjs cygnus out.png # 算成一張圖（深色模型要白底才看得出輪廓）
 node tools/check-model.mjs cygnus src/client/java/.../CygnusModel.java
+node tools/car-icon.mjs                       # 兩款跑車的 16×16 物品圖示
 ```
 
 `gen-model.mjs` 會從 `models.js` **產生** Java 的 `createBodyLayer()`，

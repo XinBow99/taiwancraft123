@@ -53,216 +53,248 @@ public class LanbaoModel extends EntityModel<VehicleRenderState> {
 
         root.addOrReplaceChild("body0",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-8.0f, 0.0f, -0.8f, 16.0f, 1.8f, 1.6f),
-                PartPose.offset(0.0f, 21.4f, -30.0f));
+                        .addBox(-9.0f, 0.0f, -0.8f, 18.0f, 2.4f, 1.6f),
+                PartPose.offset(0.0f, 20.8f, -30.0f));
         root.addOrReplaceChild("body1",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-10.0f, 0.0f, -0.8f, 20.0f, 2.6f, 1.6f),
-                PartPose.offset(0.0f, 20.6f, -28.5f));
+                        .addBox(-11.0f, 0.0f, -0.8f, 22.0f, 2.8f, 1.6f),
+                PartPose.offset(0.0f, 20.4f, -28.5f));
         root.addOrReplaceChild("body2",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-12.0f, 0.0f, -0.8f, 24.0f, 3.2f, 1.6f),
+                        .addBox(-13.0f, 0.0f, -0.8f, 26.0f, 3.2f, 1.6f),
                 PartPose.offset(0.0f, 20.0f, -27.0f));
         root.addOrReplaceChild("body3",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-13.5f, 0.0f, -0.8f, 27.0f, 3.5f, 1.6f),
-                PartPose.offset(0.0f, 19.5f, -25.5f));
+                        .addBox(-14.5f, 0.0f, -0.8f, 29.0f, 3.2f, 1.6f),
+                PartPose.offset(0.0f, 19.8f, -25.5f));
         root.addOrReplaceChild("body4",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.5f, 0.0f, -0.8f, 29.0f, 3.8f, 1.6f),
-                PartPose.offset(0.0f, 19.0f, -24.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 3.3f, 1.6f),
+                PartPose.offset(0.0f, 19.5f, -24.0f));
         root.addOrReplaceChild("body5",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 4.0f, 1.6f),
-                PartPose.offset(0.0f, 18.6f, -22.5f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 3.3f, 1.6f),
+                PartPose.offset(0.0f, 19.3f, -22.5f));
         root.addOrReplaceChild("body6",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 4.4f, 1.6f),
-                PartPose.offset(0.0f, 18.2f, -21.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 3.6f, 1.6f),
+                PartPose.offset(0.0f, 19.0f, -21.0f));
         root.addOrReplaceChild("body7",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 4.8f, 1.6f),
-                PartPose.offset(0.0f, 17.8f, -19.5f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 3.9f, 1.6f),
+                PartPose.offset(0.0f, 18.7f, -19.5f));
         root.addOrReplaceChild("body8",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 5.4f, 1.6f),
-                PartPose.offset(0.0f, 17.2f, -18.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 4.2f, 1.6f),
+                PartPose.offset(0.0f, 18.4f, -18.0f));
         root.addOrReplaceChild("body9",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 6.0f, 1.6f),
-                PartPose.offset(0.0f, 16.6f, -16.5f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 4.5f, 1.6f),
+                PartPose.offset(0.0f, 18.1f, -16.5f));
         root.addOrReplaceChild("body10",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 6.6f, 1.6f),
-                PartPose.offset(0.0f, 16.0f, -15.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 4.8f, 1.6f),
+                PartPose.offset(0.0f, 17.8f, -15.0f));
         root.addOrReplaceChild("body11",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.4f, 1.6f),
-                PartPose.offset(0.0f, 15.2f, -13.5f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 6.0f, 1.6f),
+                PartPose.offset(0.0f, 16.6f, -13.5f));
         root.addOrReplaceChild("body12",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 8.4f, 1.6f),
-                PartPose.offset(0.0f, 14.2f, -12.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 8.0f, 1.6f),
+                PartPose.offset(0.0f, 14.6f, -12.0f));
         root.addOrReplaceChild("body13",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 9.8f, 1.6f),
-                PartPose.offset(0.0f, 12.8f, -10.5f));
+                        .addBox(-14.5f, 0.0f, -0.8f, 29.0f, 10.2f, 1.6f),
+                PartPose.offset(0.0f, 12.4f, -10.5f));
         root.addOrReplaceChild("body14",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 11.4f, 1.6f),
-                PartPose.offset(0.0f, 11.2f, -9.0f));
+                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 12.2f, 1.6f),
+                PartPose.offset(0.0f, 10.4f, -9.0f));
         root.addOrReplaceChild("body15",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.5f, 0.0f, -0.8f, 29.0f, 13.0f, 1.6f),
-                PartPose.offset(0.0f, 9.6f, -7.5f));
+                        .addBox(-13.5f, 0.0f, -0.8f, 27.0f, 13.8f, 1.6f),
+                PartPose.offset(0.0f, 8.8f, -7.5f));
         root.addOrReplaceChild("body16",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 14.0f, 1.6f),
-                PartPose.offset(0.0f, 8.6f, -6.0f));
+                        .addBox(-13.0f, 0.0f, -0.8f, 26.0f, 14.8f, 1.6f),
+                PartPose.offset(0.0f, 7.8f, -6.0f));
         root.addOrReplaceChild("body17",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 14.6f, 1.6f),
-                PartPose.offset(0.0f, 8.0f, -4.5f));
+                        .addBox(-13.0f, 0.0f, -0.8f, 26.0f, 15.2f, 1.6f),
+                PartPose.offset(0.0f, 7.4f, -4.5f));
         root.addOrReplaceChild("body18",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 15.0f, 1.6f),
-                PartPose.offset(0.0f, 7.6f, -3.0f));
+                        .addBox(-13.0f, 0.0f, -0.8f, 26.0f, 15.2f, 1.6f),
+                PartPose.offset(0.0f, 7.4f, -3.0f));
         root.addOrReplaceChild("body19",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 15.2f, 1.6f),
+                        .addBox(-13.0f, 0.0f, -0.8f, 26.0f, 15.2f, 1.6f),
                 PartPose.offset(0.0f, 7.4f, -1.5f));
         root.addOrReplaceChild("body20",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 15.2f, 1.6f),
-                PartPose.offset(0.0f, 7.4f, 0.0f));
+                        .addBox(-13.0f, 0.0f, -0.8f, 26.0f, 15.0f, 1.6f),
+                PartPose.offset(0.0f, 7.6f, 0.0f));
         root.addOrReplaceChild("body21",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 15.0f, 1.6f),
-                PartPose.offset(0.0f, 7.6f, 1.5f));
+                        .addBox(-13.5f, 0.0f, -0.8f, 27.0f, 14.2f, 1.6f),
+                PartPose.offset(0.0f, 8.4f, 1.5f));
         root.addOrReplaceChild("body22",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 14.4f, 1.6f),
-                PartPose.offset(0.0f, 8.2f, 3.0f));
+                        .addBox(-14.0f, 0.0f, -0.8f, 28.0f, 12.8f, 1.6f),
+                PartPose.offset(0.0f, 9.8f, 3.0f));
         root.addOrReplaceChild("body23",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.5f, 0.0f, -0.8f, 29.0f, 13.4f, 1.6f),
-                PartPose.offset(0.0f, 9.2f, 4.5f));
+                        .addBox(-14.5f, 0.0f, -0.8f, 29.0f, 11.2f, 1.6f),
+                PartPose.offset(0.0f, 11.4f, 4.5f));
         root.addOrReplaceChild("body24",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 12.0f, 1.6f),
-                PartPose.offset(0.0f, 10.6f, 6.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 9.8f, 1.6f),
+                PartPose.offset(0.0f, 12.8f, 6.0f));
         root.addOrReplaceChild("body25",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 10.4f, 1.6f),
-                PartPose.offset(0.0f, 12.2f, 7.5f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 8.8f, 1.6f),
+                PartPose.offset(0.0f, 13.8f, 7.5f));
         root.addOrReplaceChild("body26",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 9.0f, 1.6f),
-                PartPose.offset(0.0f, 13.6f, 9.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 8.2f, 1.6f),
+                PartPose.offset(0.0f, 14.4f, 9.0f));
         root.addOrReplaceChild("body27",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 8.0f, 1.6f),
-                PartPose.offset(0.0f, 14.6f, 10.5f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.8f, 1.6f),
+                PartPose.offset(0.0f, 14.8f, 10.5f));
         root.addOrReplaceChild("body28",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.4f, 1.6f),
-                PartPose.offset(0.0f, 15.2f, 12.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.7f, 1.6f),
+                PartPose.offset(0.0f, 14.9f, 12.0f));
         root.addOrReplaceChild("body29",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.2f, 1.6f),
-                PartPose.offset(0.0f, 15.4f, 13.5f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.6f, 1.6f),
+                PartPose.offset(0.0f, 15.0f, 13.5f));
         root.addOrReplaceChild("body30",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.2f, 1.6f),
-                PartPose.offset(0.0f, 15.4f, 15.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.6f, 1.6f),
+                PartPose.offset(0.0f, 15.0f, 15.0f));
         root.addOrReplaceChild("body31",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.2f, 1.6f),
-                PartPose.offset(0.0f, 15.4f, 16.5f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.6f, 1.6f),
+                PartPose.offset(0.0f, 15.0f, 16.5f));
         root.addOrReplaceChild("body32",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.2f, 1.6f),
-                PartPose.offset(0.0f, 15.4f, 18.0f));
+                        .addBox(-15.0f, 0.0f, -0.8f, 30.0f, 7.6f, 1.6f),
+                PartPose.offset(0.0f, 15.0f, 18.0f));
         root.addOrReplaceChild("body33",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-14.5f, 0.0f, -0.8f, 29.0f, 7.2f, 1.6f),
-                PartPose.offset(0.0f, 15.6f, 19.5f));
+                        .addBox(-14.5f, 0.0f, -0.8f, 29.0f, 7.6f, 1.6f),
+                PartPose.offset(0.0f, 15.2f, 19.5f));
         root.addOrReplaceChild("body34",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-13.5f, 0.0f, -0.8f, 27.0f, 7.0f, 1.6f),
-                PartPose.offset(0.0f, 16.0f, 21.0f));
+                        .addBox(-13.5f, 0.0f, -0.8f, 27.0f, 7.4f, 1.6f),
+                PartPose.offset(0.0f, 15.6f, 21.0f));
         root.addOrReplaceChild("body35",
                 CubeListBuilder.create().texOffs(PAINT, PAINT_V)
-                        .addBox(-12.0f, 0.0f, -0.8f, 24.0f, 6.6f, 1.6f),
-                PartPose.offset(0.0f, 16.6f, 22.5f));
+                        .addBox(-12.0f, 0.0f, -0.8f, 24.0f, 6.8f, 1.6f),
+                PartPose.offset(0.0f, 16.4f, 22.5f));
         root.addOrReplaceChild("body36",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
                         .addBox(-10.0f, 0.0f, -0.8f, 20.0f, 5.8f, 1.6f),
                 PartPose.offset(0.0f, 17.4f, 24.0f));
         root.addOrReplaceChild("glass_f",
                 CubeListBuilder.create().texOffs(GLASS, GLASS_V)
-                        .addBox(-13.0f, 0.0f, -1.2f, 24.0f, 7.0f, 2.4f),
-                PartPose.offsetAndRotation(0.0f, 8.4f, -8.6f, 34f * Mth.DEG_TO_RAD, 0f, 0f));
+                        .addBox(-12.0f, -5.8f, -0.7f, 24.0f, 11.6f, 1.4f),
+                PartPose.offsetAndRotation(0.0f, 11.2f, -9.75f, 40f * Mth.DEG_TO_RAD, 0f, 0f));
         root.addOrReplaceChild("glass_left",
                 CubeListBuilder.create().texOffs(GLASS, GLASS_V)
-                        .addBox(-0.6f, 0.0f, -7.0f, 1.2f, 5.0f, 14.0f),
-                PartPose.offset(13.6f, 8.2f, -1.0f));
+                        .addBox(-0.6f, -2.3f, -3.75f, 1.2f, 4.6f, 7.5f),
+                PartPose.offset(13.5f, 9.7f, -2.25f));
         root.addOrReplaceChild("glass_right",
                 CubeListBuilder.create().texOffs(GLASS, GLASS_V)
-                        .addBox(-0.6f, 0.0f, -7.0f, 1.2f, 5.0f, 14.0f),
-                PartPose.offset(-13.6f, 8.2f, -1.0f));
+                        .addBox(-0.6f, -2.3f, -3.75f, 1.2f, 4.6f, 7.5f),
+                PartPose.offset(-13.5f, 9.7f, -2.25f));
         root.addOrReplaceChild("glass_b",
                 CubeListBuilder.create().texOffs(GLASS, GLASS_V)
-                        .addBox(-11.0f, 0.0f, -1.2f, 22.0f, 5.6f, 2.4f),
-                PartPose.offsetAndRotation(0.0f, 8.2f, 6.2f, -40f * Mth.DEG_TO_RAD, 0f, 0f));
-        root.addOrReplaceChild("lamp_left",
+                        .addBox(-11.0f, -4.0f, -0.7f, 22.0f, 7.9f, 1.4f),
+                PartPose.offsetAndRotation(0.0f, 10.2f, 3.0f, -49f * Mth.DEG_TO_RAD, 0f, 0f));
+        root.addOrReplaceChild("drl_left",
                 CubeListBuilder.create().texOffs(LAMP, LAMP_V)
-                        .addBox(-4.4f, -1.4f, -0.6f, 4.4f, 2.4f, 1.2f),
-                PartPose.offset(8.4f, 20.2f, -29.6f));
-        root.addOrReplaceChild("lamp_right",
+                        .addBox(-2.5f, -0.5f, -0.5f, 5.0f, 1.0f, 1.0f),
+                PartPose.offsetAndRotation(5.6f, 21.4f, -31.0f, 0f, 0f, -14f * Mth.DEG_TO_RAD));
+        root.addOrReplaceChild("drl_right",
                 CubeListBuilder.create().texOffs(LAMP, LAMP_V)
-                        .addBox(0.0f, -1.4f, -0.6f, 4.4f, 2.4f, 1.2f),
-                PartPose.offset(-8.4f, 20.2f, -29.6f));
+                        .addBox(-2.5f, -0.5f, -0.5f, 5.0f, 1.0f, 1.0f),
+                PartPose.offsetAndRotation(-5.6f, 21.4f, -31.0f, 0f, 0f, 14f * Mth.DEG_TO_RAD));
+        root.addOrReplaceChild("drl_l2",
+                CubeListBuilder.create().texOffs(LAMP, LAMP_V)
+                        .addBox(-0.6f, -0.8f, -0.5f, 1.2f, 1.6f, 1.0f),
+                PartPose.offsetAndRotation(8.4f, 22.0f, -31.0f, 0f, 0f, -30f * Mth.DEG_TO_RAD));
+        root.addOrReplaceChild("drl_r2",
+                CubeListBuilder.create().texOffs(LAMP, LAMP_V)
+                        .addBox(-0.6f, -0.8f, -0.5f, 1.2f, 1.6f, 1.0f),
+                PartPose.offsetAndRotation(-8.4f, 22.0f, -31.0f, 0f, 0f, 30f * Mth.DEG_TO_RAD));
+        root.addOrReplaceChild("intake_left",
+                CubeListBuilder.create().texOffs(DARK, DARK_V)
+                        .addBox(-2.2f, -0.6f, -0.6f, 4.4f, 1.2f, 1.2f),
+                PartPose.offset(6.4f, 22.5f, -30.9f));
+        root.addOrReplaceChild("intake_right",
+                CubeListBuilder.create().texOffs(DARK, DARK_V)
+                        .addBox(-2.2f, -0.6f, -0.6f, 4.4f, 1.2f, 1.2f),
+                PartPose.offset(-6.4f, 22.5f, -30.9f));
+        root.addOrReplaceChild("splitter",
+                CubeListBuilder.create().texOffs(DARK, DARK_V)
+                        .addBox(-11.0f, -0.5f, -1.6f, 22.0f, 1.0f, 3.2f),
+                PartPose.offset(0.0f, 23.0f, -30.0f));
+        root.addOrReplaceChild("badge",
+                CubeListBuilder.create().texOffs(CHROME, CHROME_V)
+                        .addBox(-0.7f, -0.7f, -0.3f, 1.4f, 1.4f, 0.6f),
+                PartPose.offsetAndRotation(0.0f, 21.6f, -31.1f, 0f, 0f, 45f * Mth.DEG_TO_RAD));
         root.addOrReplaceChild("tail_left",
                 CubeListBuilder.create().texOffs(RED, RED_V)
-                        .addBox(-4.6f, -1.0f, -0.5f, 4.6f, 2.0f, 1.0f),
-                PartPose.offset(8.0f, 18.6f, 24.4f));
+                        .addBox(-5.2f, -0.9f, -0.5f, 5.2f, 1.8f, 1.0f),
+                PartPose.offset(7.6f, 16.4f, 24.4f));
         root.addOrReplaceChild("tail_right",
                 CubeListBuilder.create().texOffs(RED, RED_V)
-                        .addBox(0.0f, -1.0f, -0.5f, 4.6f, 2.0f, 1.0f),
-                PartPose.offset(-8.0f, 18.6f, 24.4f));
-        root.addOrReplaceChild("vent_left",
+                        .addBox(0.0f, -0.9f, -0.5f, 5.2f, 1.8f, 1.0f),
+                PartPose.offset(-7.6f, 16.4f, 24.4f));
+        root.addOrReplaceChild("diffuser",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
-                        .addBox(-6.0f, -1.6f, -0.6f, 6.0f, 3.2f, 1.2f),
-                PartPose.offset(7.6f, 22.0f, -29.4f));
-        root.addOrReplaceChild("vent_right",
-                CubeListBuilder.create().texOffs(DARK, DARK_V)
-                        .addBox(0.0f, -1.6f, -0.6f, 6.0f, 3.2f, 1.2f),
-                PartPose.offset(-7.6f, 22.0f, -29.4f));
+                        .addBox(-13.0f, -1.6f, -1.8f, 26.0f, 3.2f, 3.6f),
+                PartPose.offset(0.0f, 22.0f, 25.0f));
+        root.addOrReplaceChild("pipe_left",
+                CubeListBuilder.create().texOffs(CHROME, CHROME_V)
+                        .addBox(-2.4f, -0.9f, -0.9f, 2.4f, 1.8f, 1.8f),
+                PartPose.offset(5.0f, 19.4f, 24.8f));
+        root.addOrReplaceChild("pipe_right",
+                CubeListBuilder.create().texOffs(CHROME, CHROME_V)
+                        .addBox(0.0f, -0.9f, -0.9f, 2.4f, 1.8f, 1.8f),
+                PartPose.offset(-5.0f, 19.4f, 24.8f));
         root.addOrReplaceChild("scoop_left",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
-                        .addBox(-0.8f, -2.0f, -4.0f, 1.6f, 4.0f, 8.0f),
-                PartPose.offset(14.4f, 13.6f, 6.0f));
+                        .addBox(-0.9f, -2.4f, -4.5f, 1.8f, 4.8f, 9.0f),
+                PartPose.offset(14.6f, 14.4f, 11.0f));
         root.addOrReplaceChild("scoop_right",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
-                        .addBox(-0.8f, -2.0f, -4.0f, 1.6f, 4.0f, 8.0f),
-                PartPose.offset(-14.4f, 13.6f, 6.0f));
+                        .addBox(-0.9f, -2.4f, -4.5f, 1.8f, 4.8f, 9.0f),
+                PartPose.offset(-14.6f, 14.4f, 11.0f));
+        root.addOrReplaceChild("sill_left",
+                CubeListBuilder.create().texOffs(DARK, DARK_V)
+                        .addBox(-1.0f, -0.9f, -14.0f, 2.0f, 1.8f, 28.0f),
+                PartPose.offset(13.8f, 22.4f, -3.0f));
+        root.addOrReplaceChild("sill_right",
+                CubeListBuilder.create().texOffs(DARK, DARK_V)
+                        .addBox(-1.0f, -0.9f, -14.0f, 2.0f, 1.8f, 28.0f),
+                PartPose.offset(-13.8f, 22.4f, -3.0f));
         root.addOrReplaceChild("wing",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
                         .addBox(-14.0f, -0.9f, -2.6f, 28.0f, 1.8f, 5.2f),
-                PartPose.offsetAndRotation(0.0f, 12.0f, 24.6f, -8f * Mth.DEG_TO_RAD, 0f, 0f));
+                PartPose.offsetAndRotation(0.0f, 11.6f, 23.6f, -8f * Mth.DEG_TO_RAD, 0f, 0f));
         root.addOrReplaceChild("wing_left",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
-                        .addBox(-0.9f, 0.0f, -1.6f, 1.8f, 5.0f, 3.2f),
-                PartPose.offset(12.6f, 12.6f, 24.2f));
+                        .addBox(-0.9f, 0.0f, -1.6f, 1.8f, 4.6f, 3.2f),
+                PartPose.offset(12.6f, 12.2f, 23.2f));
         root.addOrReplaceChild("wing_right",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
-                        .addBox(-0.9f, 0.0f, -1.6f, 1.8f, 5.0f, 3.2f),
-                PartPose.offset(-12.6f, 12.6f, 24.2f));
-        root.addOrReplaceChild("diffuser",
-                CubeListBuilder.create().texOffs(DARK, DARK_V)
-                        .addBox(-13.0f, -1.4f, -1.6f, 26.0f, 2.8f, 3.2f),
-                PartPose.offset(0.0f, 22.4f, 25.4f));
+                        .addBox(-0.9f, 0.0f, -1.6f, 1.8f, 4.6f, 3.2f),
+                PartPose.offset(-12.6f, 12.2f, 23.2f));
         PartDefinition wheelFl = root.addOrReplaceChild("wheel_fl",
                 CubeListBuilder.create().texOffs(TIRE, TIRE_V)
                         .addBox(-2.4f, -4.2f, -4.2f, 4.8f, 8.4f, 8.4f),
@@ -287,6 +319,10 @@ public class LanbaoModel extends EntityModel<VehicleRenderState> {
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
                         .addBox(-2.7f, -1.1f, -1.1f, 5.4f, 2.2f, 2.2f),
                 PartPose.ZERO);
+        wheelFl.addOrReplaceChild("cal_fl",
+                CubeListBuilder.create().texOffs(RED, RED_V)
+                        .addBox(-2.75f, -1.6f, -0.5f, 0.9f, 3.2f, 1.0f),
+                PartPose.ZERO);
         wheelFr.addOrReplaceChild("rim_fr",
                 CubeListBuilder.create().texOffs(RIM, RIM_V)
                         .addBox(-2.6f, -2.4f, -2.4f, 5.2f, 4.8f, 4.8f),
@@ -294,6 +330,10 @@ public class LanbaoModel extends EntityModel<VehicleRenderState> {
         wheelFr.addOrReplaceChild("hub_fr",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
                         .addBox(-2.7f, -1.1f, -1.1f, 5.4f, 2.2f, 2.2f),
+                PartPose.ZERO);
+        wheelFr.addOrReplaceChild("cal_fr",
+                CubeListBuilder.create().texOffs(RED, RED_V)
+                        .addBox(1.85f, -1.6f, -0.5f, 0.9f, 3.2f, 1.0f),
                 PartPose.ZERO);
         wheelRl.addOrReplaceChild("rim_rl",
                 CubeListBuilder.create().texOffs(RIM, RIM_V)
@@ -303,6 +343,10 @@ public class LanbaoModel extends EntityModel<VehicleRenderState> {
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
                         .addBox(-2.9f, -1.2f, -1.2f, 5.8f, 2.4f, 2.4f),
                 PartPose.ZERO);
+        wheelRl.addOrReplaceChild("cal_rl",
+                CubeListBuilder.create().texOffs(RED, RED_V)
+                        .addBox(-2.95f, -1.8f, -0.5f, 0.9f, 3.6f, 1.0f),
+                PartPose.ZERO);
         wheelRr.addOrReplaceChild("rim_rr",
                 CubeListBuilder.create().texOffs(RIM, RIM_V)
                         .addBox(-2.8f, -2.6f, -2.6f, 5.6f, 5.2f, 5.2f),
@@ -310,6 +354,10 @@ public class LanbaoModel extends EntityModel<VehicleRenderState> {
         wheelRr.addOrReplaceChild("hub_rr",
                 CubeListBuilder.create().texOffs(DARK, DARK_V)
                         .addBox(-2.9f, -1.2f, -1.2f, 5.8f, 2.4f, 2.4f),
+                PartPose.ZERO);
+        wheelRr.addOrReplaceChild("cal_rr",
+                CubeListBuilder.create().texOffs(RED, RED_V)
+                        .addBox(2.05f, -1.8f, -0.5f, 0.9f, 3.6f, 1.0f),
                 PartPose.ZERO);
 
         return LayerDefinition.create(mesh, 128, 128);

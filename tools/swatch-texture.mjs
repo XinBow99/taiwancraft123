@@ -34,8 +34,8 @@ const LAYOUTS = {
 
 const PALETTES = {
   // 兩款跑車。槽位順序：PAINT DARK GLASS LAMP ｜ RED TIRE RIM CHROME
-  lanbao:  ['#c8d42a', '#1b1d20', '#2a3138', '#eef2f4', '#d2342c', '#141416', '#c9ccd0', '#b0b6bc'],
-  mashala: ['#1f3f7a', '#15171a', '#28303a', '#eef2f4', '#c93028', '#141416', '#c9ccd0', '#cfd4d8'],
+  lanbao:  ['#f2c318', '#161719', '#232a31', '#f2f5f7', '#d2342c', '#141416', '#5f656b', '#b0b6bc'],
+  mashala: ['#1f4fc8', '#15171a', '#28303a', '#f2f5f7', '#c93028', '#141416', '#6e747a', '#cfd4d8'],
   // BODY DARK SEAT TIRE / CHROME LAMP AMBER BRAKE
   classic: ['#2f3237', '#212429', '#191b1e', '#121417', '#b9c0c6', '#e9e4d8', '#e08a2c', '#b4302c'],
   // 勁戰四代（紅黑）。順序＝CygnusModel 裡三十二個槽位常數的順序。
