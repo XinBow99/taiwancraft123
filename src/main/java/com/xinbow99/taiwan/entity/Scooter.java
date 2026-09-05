@@ -54,8 +54,25 @@ public class Scooter extends VehicleEntity {
     private static final float IDLE_FRICTION = 0.72f;
     /** 有人騎但沒給油的滑行摩擦。 */
     private static final float COAST_FRICTION = 0.955f;
-    /** 轉向：每 tick 最多轉幾度。6.5 度 ≒ 每秒 130 度，一個路口的直角彎大約一秒轉完。 */
-    private static final float TURN_RATE = 6.5f;
+    /**
+     * 軸距（格）。前後輪的距離，決定同一個龍頭角度會畫出多大的圓：{@code 迴轉半徑 = 軸距 ÷ tan(龍頭角度)}。
+     */
+    private static final float WHEELBASE = 1.4f;
+    /** 慢速時龍頭能打到幾度。停車場裡要能打死方向。 */
+    private static final float STEER_LOCK_SLOW = 35f;
+    /**
+     * 全速時龍頭只能打到幾度。
+     *
+     * <p>不是為了「限制玩家」，是因為真的騎車時速度越快龍頭動得越少——高速全打死等於摔車。
+     * 17 度配上 1.4 格的軸距，滿速的迴轉半徑約 4.6 格，剛好是一個路口的寬度。
+     */
+    private static final float STEER_LOCK_FAST = 17f;
+    /** 龍頭轉動的速度（度/tick）。 */
+    private static final float STEER_RATE = 4.5f;
+    /** 放開方向鍵之後龍頭自己回正的速度（度/tick）。比打方向快，機車本來就會自己回正。 */
+    private static final float STEER_RETURN = 7f;
+    /** 幾乎停住時，用牽的把車頭轉過去（度/tick）。 */
+    private static final float WALK_TURN = 1.6f;
     /** 撞牆超過這個速度就損壞。 */
     private static final float CRASH_SPEED = 0.28f;
 
@@ -95,6 +112,14 @@ public class Scooter extends VehicleEntity {
      * 分開之後，行進方向是「追」著車頭跑的，過彎才有重心轉移的感覺，甩尾也才成立。
      */
     private float velYaw;
+    /**
+     * 龍頭角度（度，正值往右）。
+     *
+     * <p>這現在是**物理狀態**，不是視覺裝飾。車頭往哪轉、轉多快，都是從它算出來的。
+     * 之前它只是畫給人看的，實際的轉向是「按著方向鍵就每 tick 轉固定角度」——
+     * 那是把車當成一個會自轉的箭頭，跟輪胎指的方向沒有關係，所以怎麼調都不對。
+     */
+    private float steer;
     /** 甩尾已經撐了幾 tick。放開時用它決定給不給加速。 */
     private int driftTicks;
     /** 加速還剩幾 tick。 */
@@ -123,9 +148,14 @@ public class Scooter extends VehicleEntity {
         return owner().map(id -> id.equals(player.getUUID())).orElse(true);
     }
 
-    /** 龍頭角度（度）。算繪器用。 */
+    /**
+     * 龍頭角度（度）。算繪器用。
+     *
+     * <p>自己騎的那台用本地算出來的值（沒有網路延遲，龍頭跟著手感動）；別人的車沒有輸入
+     * 可以算，只能用同步過來的。
+     */
     public float steerAngle() {
-        return this.entityData.get(DATA_STEER);
+        return this.isLocalInstanceAuthoritative() ? this.steer : this.entityData.get(DATA_STEER);
     }
 
     public boolean stalled() {
@@ -337,22 +367,7 @@ public class Scooter extends VehicleEntity {
         }
         this.drifting = wantDrift;
 
-        if (Math.abs(turn) > 0.01f) {
-            // 停著也轉得動（慢慢牽），只是比騎起來慢一半。原本要求「速度 > 0」才給轉，
-            // 結果是停下來就完全鎖死，玩起來像卡住
-            float agility = TURN_RATE * (0.55f + 0.45f * Math.min(pace * 4f, 1f)) * (1f - pace * 0.2f);
-            // 甩尾中車頭轉得更快：滑出去的時候要有辦法用車頭去指你要走的方向，
-            // 不然甩尾只是失控
-            if (this.drifting) agility *= 1.35f;
-            // **不乘 signum(speed)**：倒車時方向盤反向在真車上成立，但在遊戲裡玩家
-            // 只會覺得「按左卻往右」。一律照按鍵的方向轉
-            this.setYRot(this.getYRot() + turn * agility);
-            this.setYHeadRot(this.getYRot());
-        }
-        // 龍頭的視覺角度。平滑地趨近按鍵方向，放手就回正——直接跳到極值會像在抽搐。
-        // 甩尾時壓得更低（算繪器把這個角度的一半當作車身傾角）
-        float wanted = Math.abs(turn) > 0.01f ? Math.signum(turn) * (this.drifting ? 38f : 26f) : 0f;
-        this.entityData.set(DATA_STEER, Mth.lerp(0.25f, this.entityData.get(DATA_STEER), wanted));
+        steerAndTurn(turn, pace);
 
         if (this.boostTicks > 0) this.boostTicks--;
         float cap = this.boostTicks > 0 ? MAX_SPEED * BOOST_OVERSPEED : MAX_SPEED;
@@ -376,22 +391,71 @@ public class Scooter extends VehicleEntity {
     }
 
     /**
-     * 抓地力：把行進方向拉向車頭方向。
+     * 轉向。
      *
-     * <p>一台車的速度不會因為你轉了車頭就跟著轉——那是慣性。這裡每 tick 把行進方向往
-     * 車頭方向拉一部分（{@code grip}），拉不完的差額就是側滑角，也就是「外拋」的量。
+     * <h3>先轉輪胎，車再跟著輪胎走</h3>
+     * <p>之前是「按著方向鍵，車頭每 tick 就轉固定的角度」。那個做法把車當成一個會自轉的
+     * 箭頭：轉多少跟輪胎指哪裡無關、跟車跑多快也無關。停在原地按方向鍵會原地打轉，
+     * 高速時又轉不過來，怎麼調參數都不對——因為錯的不是參數，是模型。
      *
+     * <p>現在照真的兩輪車來算：龍頭有一個角度（{@link #steer}），車沿著前輪指的方向走，
+     * 後輪跟著滾，於是整台車繞著一個圓心走。那個圓的半徑是
+     * {@code 軸距 ÷ tan(龍頭角度)}，而每 tick 轉過的角度就是「走了多遠 ÷ 半徑」。
+     *
+     * <p>兩個直接的後果，也正是騎起來「對」的地方：
      * <ul>
-     *   <li>低速抓地力接近滿：巷子裡慢慢騎不會滑，牽車也不會歪。</li>
-     *   <li>高速抓地力下降：同樣的方向鍵，快的時候車會往彎外多帶一點。</li>
-     *   <li>甩尾時只剩 {@link #DRIFT_GRIP}：車身幾乎是橫著走的。</li>
+     *   <li><b>轉多少跟速度成正比</b>：慢慢滑行時龍頭打死也只是慢慢繞，油門一催就轉得快。
+     *       停著不動的時候，龍頭轉了車也不會轉——輪胎沒有滾動，哪來的轉向。</li>
+     *   <li><b>轉完就直行</b>：放開方向鍵龍頭自己回正，車立刻沿著新的方向走直線，
+     *       不會繼續飄。</li>
      * </ul>
      *
-     * <p>側滑角有上限，而且側滑要吃掉速度。沒有這兩條的話，車會變成可以無成本橫移的東西：
-     * 一邊全速前進一邊面向側面，看起來很蠢，玩起來也沒有取捨。
+     * <p>龍頭本身有轉動速度上限（{@link #STEER_RATE}），所以方向是「打」出來的而不是
+     * 瞬間切換——這也是為什麼車頭的動作看起來有重量。
+     *
+     * @param turn 方向鍵，-1（左）到 1（右）
+     * @param pace 目前速度佔最高速的比例
+     */
+    private void steerAndTurn(float turn, float pace) {
+        // 速度越快，龍頭能打的角度越小。真的騎車就是這樣：高速全打死等於摔車
+        float lock = Mth.lerp(pace, STEER_LOCK_SLOW, STEER_LOCK_FAST);
+        float target = Math.abs(turn) > 0.01f ? Mth.clamp(turn, -1f, 1f) * lock : 0f;
+        this.steer = Mth.approach(this.steer, target, target == 0f ? STEER_RETURN : STEER_RATE);
+        if (!this.level().isClientSide()) {
+            this.entityData.set(DATA_STEER, this.steer);
+        }
+
+        // 走了多遠 ÷ 迴轉半徑 ＝ 這一 tick 轉過的角度。
+        // **用 abs(speed)**：倒車時龍頭往左、車尾往左（車頭往右）才是真的，但在遊戲裡
+        // 玩家只會覺得「按左卻往右」。一律照按鍵的方向轉
+        float yaw = Math.abs(this.speed) / WHEELBASE
+                * (float) Math.tan(this.steer * Mth.DEG_TO_RAD) * Mth.RAD_TO_DEG;
+        // 甩尾中車頭轉得更快：滑出去的時候要有辦法用車頭去指你要走的方向，不然只是失控
+        if (this.drifting) yaw *= 1.35f;
+
+        // 幾乎停住時用牽的。物理上停著的車轉龍頭是不會動的，但玩家需要把停好的車
+        // 撥個方向再出發——不給的話會覺得車卡住了
+        if (Math.abs(this.speed) < 0.02f && Math.abs(turn) > 0.01f) {
+            yaw = Math.signum(turn) * WALK_TURN;
+        }
+        if (yaw != 0f) {
+            this.setYRot(this.getYRot() + yaw);
+            this.setYHeadRot(this.getYRot());
+        }
+    }
+
+    /**
+     * 抓地力：把行進方向拉向車頭方向。
+     *
+     * <p>平常騎的時候這幾乎是恆等式——{@link #steerAndTurn} 已經算好車頭該轉去哪裡，
+     * 車就往那裡走，不會有「車頭朝這邊、車身往那邊滑」的橡皮筋感。留 0.15 的餘量
+     * 只是為了讓甩尾結束、抓地力回來的那一下有一兩格的過渡，不要硬切。
+     *
+     * <p>真正用到它的是甩尾：抓地力掉到 {@link #DRIFT_GRIP}，車頭轉了但車身跟不上，
+     * 那個差額（側滑角）就是甩出去的角度。側滑角有上限，而且會吃掉速度——不然車就變成
+     * 可以無成本橫移的東西：一邊全速前進一邊面向側面，看起來很蠢，玩起來也沒有取捨。
      */
     private void grip() {
-        float pace = Math.min(Math.abs(this.speed) / MAX_SPEED, 1f);
         if (Math.abs(this.speed) < 0.06f) {
             // 幾乎停住：直接對齊。也順便處理「剛讀檔進來」的情況——velYaw 沒有存檔，
             // 一開始是 0，不對齊的話車會朝著北方橫著滑出去
@@ -399,7 +463,7 @@ public class Scooter extends VehicleEntity {
             return;
         }
 
-        float grip = this.drifting ? DRIFT_GRIP : 0.62f - 0.34f * pace;
+        float grip = this.drifting ? DRIFT_GRIP : 0.85f;
         this.velYaw += Mth.wrapDegrees(this.getYRot() - this.velYaw) * grip;
 
         float slip = Mth.wrapDegrees(this.getYRot() - this.velYaw);
