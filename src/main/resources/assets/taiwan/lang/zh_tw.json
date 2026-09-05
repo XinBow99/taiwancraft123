@@ -1,7 +1,8 @@
 {
-  "generator.taiwan.taiwan": "台灣",
   "entity.taiwan.macaque": "台灣獼猴",
   "entity.taiwan.scooter": "機車",
+  "generator.taiwan.taiwan": "台灣",
+  "item.taiwan.cygnus": "勁戰四代 125",
   "item.taiwan.macaque_spawn_egg": "台灣獼猴生怪蛋",
   "item.taiwan.scooter": "機車",
   "subtitles.taiwan.scooter_engine": "機車引擎運轉",

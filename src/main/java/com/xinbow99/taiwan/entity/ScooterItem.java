@@ -20,8 +20,12 @@ import net.minecraft.world.level.Level;
  */
 public class ScooterItem extends Item {
 
-    public ScooterItem(Properties properties) {
+    /** 這個物品放出來的是哪一款車。物品與車款是一對一的，所以存成 final 欄位就夠了。 */
+    private final ScooterVariant variant;
+
+    public ScooterItem(ScooterVariant variant, Properties properties) {
         super(properties);
+        this.variant = variant;
     }
 
     @Override
@@ -33,6 +37,7 @@ public class ScooterItem extends Item {
 
         Scooter scooter = TaiwanEntities.SCOOTER.create(server, EntitySpawnReason.SPAWN_ITEM_USE);
         if (scooter == null) return InteractionResult.FAIL;
+        scooter.setVariant(this.variant);
 
         scooter.snapTo(on.getX() + 0.5, on.getY(), on.getZ() + 0.5,
                 context.getHorizontalDirection().toYRot(), 0.0f);

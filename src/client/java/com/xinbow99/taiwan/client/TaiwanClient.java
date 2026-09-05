@@ -1,16 +1,21 @@
 package com.xinbow99.taiwan.client;
 
+import com.xinbow99.taiwan.Taiwan;
 import com.xinbow99.taiwan.client.entity.MacaqueModel;
 import com.xinbow99.taiwan.client.entity.MacaqueRenderer;
+import com.xinbow99.taiwan.client.entity.CygnusModel;
 import com.xinbow99.taiwan.client.entity.ScooterModel;
 import com.xinbow99.taiwan.client.entity.ScooterRenderer;
 import com.xinbow99.taiwan.client.entity.ScooterSoundInstance;
+import com.xinbow99.taiwan.client.hud.ScooterDashboard;
 import com.xinbow99.taiwan.entity.Scooter;
 import com.xinbow99.taiwan.entity.TaiwanEntities;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.Minecraft;
 
 /**
@@ -27,6 +32,8 @@ public class TaiwanClient implements ClientModInitializer {
 		EntityRendererRegistry.register(TaiwanEntities.MACAQUE, MacaqueRenderer::new);
 
 		ModelLayerRegistry.registerModelLayer(ScooterRenderer.LAYER, ScooterModel::createBodyLayer);
+		// 兩款車共用同一個實體種類與算繪器，但各有自己的零件樹，所以 layer 要各註冊一個
+		ModelLayerRegistry.registerModelLayer(ScooterRenderer.CYGNUS_LAYER, CygnusModel::createBodyLayer);
 		EntityRendererRegistry.register(TaiwanEntities.SCOOTER, ScooterRenderer::new);
 
 		// 每一台車一進入視野就掛一個循環音源，跟著它直到它被移除。
@@ -38,5 +45,10 @@ public class TaiwanClient implements ClientModInitializer {
 				Minecraft.getInstance().getSoundManager().play(new ScooterSoundInstance(scooter));
 			}
 		});
+
+		// 儀表板掛在快捷列後面：畫在原版 HUD 之上，但排在聊天視窗之前，
+		// 所以聊天訊息不會被錶面蓋住
+		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
+				Taiwan.id("scooter_dashboard"), new ScooterDashboard());
 	}
 }

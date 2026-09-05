@@ -1,5 +1,6 @@
 package com.xinbow99.taiwan.client.entity;
 
+import com.xinbow99.taiwan.entity.ScooterVariant;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 
 /**
@@ -16,4 +17,6 @@ public class ScooterRenderState extends EntityRenderState {
     public float lean;
     /** 車頭朝向（度）。EntityRenderState 沒有這個欄位，要自己抄。 */
     public float yRot;
+    /** 車款。決定用哪個模型與哪張貼圖。 */
+    public ScooterVariant variant = ScooterVariant.CLASSIC;
 }

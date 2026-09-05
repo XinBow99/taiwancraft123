@@ -47,7 +47,18 @@ public final class TaiwanItems {
     public static final Item SCOOTER = Registry.register(
             BuiltInRegistries.ITEM,
             SCOOTER_KEY,
-            new ScooterItem(new Item.Properties().stacksTo(1).setId(SCOOTER_KEY)));
+            new ScooterItem(ScooterVariant.CLASSIC,
+                    new Item.Properties().stacksTo(1).setId(SCOOTER_KEY)));
+
+    public static final ResourceKey<Item> CYGNUS_KEY =
+            ResourceKey.create(Registries.ITEM, Taiwan.id("cygnus"));
+
+    /** 勁戰四代 125。跟上面那台是同一個實體種類，差別只在 {@link ScooterVariant}。 */
+    public static final Item CYGNUS = Registry.register(
+            BuiltInRegistries.ITEM,
+            CYGNUS_KEY,
+            new ScooterItem(ScooterVariant.CYGNUS,
+                    new Item.Properties().stacksTo(1).setId(CYGNUS_KEY)));
 
     /**
      * 只是為了觸發這個類別的靜態初始化——註冊發生在上面那個欄位的初始化裡。
