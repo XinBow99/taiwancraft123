@@ -21,6 +21,13 @@ import { deflateSync } from 'node:zlib';
 const LAYOUTS = {
   classic: { cols: 2, sw: 64, sh: 32, size: 128 },
   cygnus:  { cols: 8, sw: 32, sh: 32, size: 256 },
+  // 8+9 的六型共用一個十六格版型，差別只在每一格填什麼顏色
+  eightnine_temple: { cols: 4, sw: 32, sh: 32, size: 128 },
+  eightnine_rider: { cols: 4, sw: 32, sh: 32, size: 128 },
+  eightnine_street: { cols: 4, sw: 32, sh: 32, size: 128 },
+  eightnine_boss: { cols: 4, sw: 32, sh: 32, size: 128 },
+  eightnine_white: { cols: 4, sw: 32, sh: 32, size: 128 },
+  eightnine_night_market: { cols: 4, sw: 32, sh: 32, size: 128 },
 };
 
 const PALETTES = {
@@ -36,6 +43,28 @@ const PALETTES = {
     '#101215', '#5a5f66', '#7d838a', '#262a2f', '#b0343c', '#ff9a3c', '#8f4bb0', '#2f3338',
   ],
 };
+
+// 8+9 六型。槽位順序：
+//   SKIN SKIN_DK HAIR HAIR_LT ｜ EYE DARK RED GOLD
+//   SHIRT SHIRT_DK PANTS PANTS_DK ｜ SHOE SHOE_DK WHITE89 ACCENT
+//
+// 六型的差別全部在這張表裡，模型只有一個。廟會那型的 SHIRT 直接填膚色——他是赤膊的，
+// 上衣那幾個盒子就變成身體本身
+const EIGHTNINE = {
+  temple: ['#e0ac86','#c8916b','#1c1a19','#332f2c','#20140e','#1e2024','#b3271f','#d8ae3a',
+           '#e0ac86','#c8916b','#f2f0ec','#d8d4cc','#f2f2f4','#c2c2c6','#f2f2f4','#8a1f18'],
+  rider:  ['#e0ac86','#c8916b','#1c1a19','#332f2c','#20140e','#15171a','#b3271f','#8a8f96',
+           '#232629','#16181b','#2b2f34','#1c1f23','#e8e8ea','#c2c2c6','#f2f2f4','#5a6068'],
+  street: ['#e0ac86','#c8916b','#1c1a19','#332f2c','#20140e','#1e2024','#b3271f','#d8ae3a',
+           '#26282c','#191b1f','#5a6d8c','#43536c','#e8e8ea','#c2c2c6','#f2f2f4','#3d4a5e'],
+  boss:   ['#e0ac86','#c8916b','#1c1a19','#332f2c','#20140e','#15171a','#8a1f18','#e8c352',
+           '#1a1c20','#101216','#1a1c20','#101216','#f2f2f4','#c2c2c6','#f2f2f4','#c9a33a'],
+  white:  ['#e0ac86','#c8916b','#1c1a19','#332f2c','#20140e','#2a2c30','#b3271f','#d8ae3a',
+           '#f4f4f2','#dedcd6','#f4f4f2','#dedcd6','#f2f2f4','#c2c2c6','#ffffff','#b8b2a4'],
+  night_market: ['#e0ac86','#c8916b','#1c1a19','#332f2c','#20140e','#141619','#b3271f','#9aa0a6',
+           '#1f2226','#131518','#24272b','#171a1d','#e8e8ea','#c2c2c6','#f2f2f4','#4a5058'],
+};
+for (const [name, palette] of Object.entries(EIGHTNINE)) PALETTES['eightnine_' + name] = palette;
 
 const name = process.argv[2] || 'cygnus';
 const out = process.argv[3];

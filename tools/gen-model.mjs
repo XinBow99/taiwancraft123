@@ -32,6 +32,11 @@ const SLOT = {
   '#a03038': 'RED_MID', '#7a0e14': 'RED_DEEP', '#ffffff': 'PURE', '#c8ccd0': 'ASH',
   '#101215': 'INK', '#5a5f66': 'GUN', '#7d838a': 'PEWTER', '#262a2f': 'COAL',
   '#b0343c': 'ROSE', '#ff9a3c': 'AMBER_LT', '#8f4bb0': 'ORCHID', '#2f3338': 'GRAPHITE',
+  // 8+9（十六格）
+  '#e0ac86': 'SKIN', '#c8916b': 'SKIN_DK', '#1c1a19': 'HAIR', '#332f2c': 'HAIR_LT',
+  '#20140e': 'EYE', '#1e2024': 'DARK', '#b3271f': 'RED', '#d8ae3a': 'GOLD',
+  '#26282c': 'SHIRT', '#191b1f': 'SHIRT_DK', '#4a5a74': 'PANTS', '#37455c': 'PANTS_DK',
+  '#e8e8ea': 'SHOE', '#c2c2c6': 'SHOE_DK', '#f2f2f4': 'WHITE89', '#8a6b3f': 'ACCENT',
 };
 
 // models.js 的簡寫 → Java 的完整零件名（給 setupAnim 抓得到）
