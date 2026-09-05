@@ -55,36 +55,49 @@ public class Scooter extends VehicleEntity {
     /** 有人騎但沒給油的滑行摩擦。 */
     private static final float COAST_FRICTION = 0.955f;
     /**
-     * 軸距（格）。前後輪的距離，決定同一個龍頭角度會畫出多大的圓：{@code 迴轉半徑 = 軸距 ÷ tan(龍頭角度)}。
-     */
-    private static final float WHEELBASE = 1.4f;
-    /** 慢速時龍頭能打到幾度。停車場裡要能打死方向。 */
-    private static final float STEER_LOCK_SLOW = 35f;
-    /**
-     * 全速時龍頭只能打到幾度。
+     * 軸距（格）。前輪到後輪的距離。
      *
-     * <p>不是為了「限制玩家」，是因為真的騎車時速度越快龍頭動得越少——高速全打死等於摔車。
-     * 17 度配上 1.4 格的軸距，滿速的迴轉半徑約 4.6 格，剛好是一個路口的寬度。
+     * <p>它決定同一個把手角度會畫出多大的圓：{@code 迴轉半徑 = 軸距 ÷ tan(把手角度)}。
+     * 調大 → 每個角度的圓都變大，車開起來像巴士，巷子轉不進去；調小 → 迴轉半徑跟著縮，
+     * 車會靈活到不像有重量，1.0 以下轉起來近乎原地打轉。1.5 配上 45 度的滿舵約是
+     * 1.5 格的最小迴轉半徑，剛好過得了一個標準路口。
      */
-    private static final float STEER_LOCK_FAST = 17f;
-    /** 龍頭轉動的速度（度/tick）。 */
-    private static final float STEER_RATE = 4.5f;
-    /** 放開方向鍵之後龍頭自己回正的速度（度/tick）。比打方向快，機車本來就會自己回正。 */
-    private static final float STEER_RETURN = 7f;
-    /** 幾乎停住時，用牽的把車頭轉過去（度/tick）。 */
-    private static final float WALK_TURN = 1.6f;
+    private static final double WHEELBASE = 1.5;
+    /**
+     * 慢速時把手能打到幾度。
+     *
+     * <p>45 度 → 最小迴轉半徑 1.5 格，停車場裡原地繞圈那種。調小（例如 30 度）半徑會拉到
+     * 2.6 格，牽車入位會開始需要來回喬；調大到 60 度以上半徑剩 0.9 格，車會像在轉陀螺。
+     */
+    private static final float STEER_LOCK_SLOW = 45f;
+    /**
+     * 全速時把手只能打到幾度。
+     *
+     * <p>不是為了限制玩家，是真的騎車就這樣：速度越快把手動得越少，高速全打死等於摔車。
+     * 8 度 → 全速迴轉半徑 10.7 格，是 GTA 那種大彎的手感。調大到 15 度半徑掉到 5.6 格，
+     * 高速變得很好轉、但也很容易一個彎就切進對向；調小到 5 度半徑 17 格，
+     * 高速幾乎只能直線，路口要先減速才過得去。
+     */
+    private static final float STEER_LOCK_FAST = 8f;
+    /** 把手轉動的跟隨速度。0.25 ≒ 三格內轉到位；放開方向鍵時目標是 0，所以同一條式子也負責回正。 */
+    private static final float STEER_LERP = 0.25f;
+    /** 過彎時車身最多傾幾度。純視覺。 */
+    private static final float MAX_LEAN = 22f;
     /** 撞牆超過這個速度就損壞。 */
     private static final float CRASH_SPEED = 0.28f;
 
     /**
-     * 甩尾時輪胎剩下多少抓地力。
+     * 平常騎乘時，側向的慣性有多少留到下一 tick。
      *
-     * <p>0.18 讓側滑角穩定在 40 度上下——車身明顯橫著走，但還沒到「面向側面全速前進」
-     * 那種荒謬的程度，而且沒有頂到上限，所以方向鍵仍然改得動滑出去的角度。
+     * <p>0.12 ＝ 幾乎全被輪胎吃掉：車頭指哪裡就往哪裡走，轉完立刻直行。
      */
-    private static final float DRIFT_GRIP = 0.18f;
+    private static final double SIDE_KEEP_GRIP = 0.12;
+    /** 甩尾（手煞車）時留下多少側向慣性。0.85 ＝ 幾乎不吃，車身橫著滑出去。 */
+    private static final double SIDE_KEEP_DRIFT = 0.85;
+    /** 甩尾時車身額外多轉的倍率。後輪在滑，轉得比幾何算出來的多——這是手感，不是物理。 */
+    private static final float DRIFT_YAW_GAIN = 1.35f;
     /** 甩尾的最低速度。太慢就甩不動——低速原地轉圈不是甩尾，是鬼打牆。 */
-    private static final float DRIFT_MIN_SPEED = 0.18f;
+    private static final double DRIFT_MIN_SPEED = 0.18;
     /** 甩尾要撐滿幾 tick 才有加速。約 0.9 秒：夠久到是個決定，不會不小心按到。 */
     private static final int DRIFT_CHARGE = 18;
     /** 加速持續幾 tick。 */
@@ -97,29 +110,38 @@ public class Scooter extends VehicleEntity {
     /** 熄火中。同步給客戶端是為了讓引擎聲與車頭燈跟著停。 */
     private static final EntityDataAccessor<Boolean> DATA_STALLED =
             SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.BOOLEAN);
-    /** 龍頭的視覺角度（度）。要同步，客戶端才畫得出把手轉動。 */
+    /** 把手角度（度）。要同步，別人才看得到你的龍頭在轉。 */
     private static final EntityDataAccessor<Float> DATA_STEER =
             SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.FLOAT);
+    /** 壓車角度（度）。同上，純視覺。 */
+    private static final EntityDataAccessor<Float> DATA_LEAN =
+            SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.FLOAT);
 
-    private float speed;
+    // 狀態分三層，不要混在一起。混在一起就是上一版的錯誤：方向鍵（第一層）被直接寫進
+    // 車身朝向（第二層），於是「轉向」變成一件跟輪胎、跟速度都無關的事。
+
+    // ---- 第一層：玩家輸入。跟速度無關，車停著也存在 ----
+
+    /** 把手角度（度，正值往右）。車停著也打得動——只是車不會轉。 */
+    private float steerAngle;
+    /** 油門，-1（煞車／倒車）到 1（全開）。 */
+    private float throttle;
+
+    // ---- 第二層：車輛狀態。由第一層推導，不接受輸入直接寫入 ----
+
+    /** 沿著車頭方向的速度純量（格/tick）。 */
+    private double speed;
     /** 上一 tick 的速度，撞擊判定用。 */
-    private float lastSpeed;
-    /**
-     * 行進方向（度）。
-     *
-     * <p>**這是這次改動的核心**：車頭朝哪裡（{@link #getYRot()}）跟車實際往哪裡走是兩件事。
-     * 之前兩者永遠相等，所以轉頭就等於瞬間換方向，車像一個會旋轉的箭頭而不是一台有重量的車。
-     * 分開之後，行進方向是「追」著車頭跑的，過彎才有重心轉移的感覺，甩尾也才成立。
-     */
-    private float velYaw;
-    /**
-     * 龍頭角度（度，正值往右）。
-     *
-     * <p>這現在是**物理狀態**，不是視覺裝飾。車頭往哪轉、轉多快，都是從它算出來的。
-     * 之前它只是畫給人看的，實際的轉向是「按著方向鍵就每 tick 轉固定角度」——
-     * 那是把車當成一個會自轉的箭頭，跟輪胎指的方向沒有關係，所以怎麼調都不對。
-     */
-    private float steer;
+    private double lastSpeed;
+    /** 壓車角度（度）。純視覺，不影響任何物理。 */
+    private float leanAngle;
+    // 車身朝向就是 Entity.yRot，唯一能改它的地方是 tickPhysics() 的第三步。
+
+    // ---- 第三層：世界狀態 ----
+
+    /** 水平速度向量。留著它才有側向慣性可以吃——那是抓地力與甩尾的來源。 */
+    private Vec3 planar = Vec3.ZERO;
+
     /** 甩尾已經撐了幾 tick。放開時用它決定給不給加速。 */
     private int driftTicks;
     /** 加速還剩幾 tick。 */
@@ -136,6 +158,7 @@ public class Scooter extends VehicleEntity {
         super.defineSynchedData(builder);
         builder.define(DATA_STALLED, false);
         builder.define(DATA_STEER, 0f);
+        builder.define(DATA_LEAN, 0f);
     }
 
     // ------------------------------------------------------------------ 車主
@@ -155,7 +178,12 @@ public class Scooter extends VehicleEntity {
      * 可以算，只能用同步過來的。
      */
     public float steerAngle() {
-        return this.isLocalInstanceAuthoritative() ? this.steer : this.entityData.get(DATA_STEER);
+        return this.isLocalInstanceAuthoritative() ? this.steerAngle : this.entityData.get(DATA_STEER);
+    }
+
+    /** 壓車角度（度，負值往右倒）。算繪器用；來源同上。 */
+    public float leanAngle() {
+        return this.isLocalInstanceAuthoritative() ? this.leanAngle : this.entityData.get(DATA_LEAN);
     }
 
     public boolean stalled() {
@@ -285,49 +313,216 @@ public class Scooter extends VehicleEntity {
             this.entityData.set(DATA_STALLED, wet);
         }
 
-        LivingEntity rider = this.getControllingPassenger();
-        if (rider instanceof Player player && !wet) {
-            drive(player);
-        } else {
-            // 沒人騎（或熄火）：很快停住。船那種滑行慣性放在機車上會變成停好之後自己飄走
-            this.drifting = false;
-            this.driftTicks = 0;
-            this.speed *= wet ? 0.5f : IDLE_FRICTION;
-            if (Math.abs(this.speed) < 0.003f) this.speed = 0f;
-            if (!this.level().isClientSide()) {
-                this.entityData.set(DATA_STEER,
-                        Mth.lerp(0.3f, this.entityData.get(DATA_STEER), 0f));
-            }
-        }
-
-        // 車這一 tick 轉了多少，乘客的視角就跟著轉多少
-        float turned = Mth.wrapDegrees(this.getYRot() - this.yRotO);
-        if (turned != 0f) {
-            for (Entity passenger : this.getPassengers()) rotateWith(passenger, turned);
-        }
-
-        grip();
-
-        // 往「行進方向」走，不是往車頭方向走。差別就是過彎時那半秒的外拋
-        Vec3 heading = new Vec3(-Mth.sin(this.velYaw * Mth.DEG_TO_RAD), 0.0,
-                Mth.cos(this.velYaw * Mth.DEG_TO_RAD));
-        Vec3 motion = this.getDeltaMovement();
-        this.setDeltaMovement(heading.x * this.speed,
-                this.onGround() ? Math.max(motion.y, -0.08) : motion.y - 0.08,
-                heading.z * this.speed);
-
-        this.move(MoverType.SELF, this.getDeltaMovement());
-        checkCrash();
+        tickPhysics(wet);
 
         if (!this.level().isClientSide()) {
             this.applyEffectsFromBlocks();
         }
-        if (wet && this.level() instanceof ServerLevel server && this.tickCount % 10 == 0) {
+        particles(wet);
+    }
+
+    /**
+     * 一個 tick 的物理。
+     *
+     * <h3>順序是規格的一部分</h3>
+     * <p>底下八步的先後不能動。最容易出錯的是三跟四：速度向量一定要用**更新後**的車頭方向
+     * 去算。先算向量再轉車頭的話，車會先用上一格的方向走一格、再把車頭轉過來，過彎時就會
+     * 出現「慣性方向對不上車頭」的抖動。
+     *
+     * <h3>yaw 是衍生量</h3>
+     * <p>整個類別裡只有第三步碰 {@code yRot}，而且只用那一條公式。這是這次重寫的重點：
+     * 之前是把方向鍵直接加到車身朝向上，那等於宣稱「車子自己會轉」，跟輪胎、跟速度都沒有
+     * 關係——停著原地打轉、高速轉不過來，是同一個錯誤的兩種症狀。
+     */
+    private void tickPhysics(boolean wet) {
+        Player rider = !wet && this.getControllingPassenger() instanceof Player p ? p : null;
+
+        // ---- 1. 輸入：油門與把手 -------------------------------------------------
+        float steerInput = rider != null ? Mth.clamp(-rider.xxa, -1f, 1f) : 0f;
+        this.throttle = rider != null ? Mth.clamp(rider.zza, -1f, 1f) : 0f;
+        updateDrift(rider, steerInput);
+
+        // 速度越快，把手能打的角度越小。「高速轉不動」這件事現在由這裡負責，而不是去衰減
+        // 車身的轉速——差別在於前者是輪胎的角度，玩家看得到，也解釋得通
+        float pace = (float) Math.min(Math.abs(this.speed) / MAX_SPEED, 1.0);
+        float lock = Mth.lerp(pace, STEER_LOCK_SLOW, STEER_LOCK_FAST);
+        this.steerAngle = Mth.lerp(STEER_LERP, this.steerAngle, steerInput * lock);
+        if (!this.level().isClientSide()) {
+            this.entityData.set(DATA_STEER, this.steerAngle);
+        }
+
+        // ---- 2. 速度 -------------------------------------------------------------
+        updateSpeed(rider != null, wet);
+
+        // ---- 3. 車身朝向（整個檔案裡唯一改 yaw 的地方）---------------------------
+        //
+        //     Δyaw = (速度 ÷ 軸距) × tan(把手角度)
+        //
+        // 車會轉，是因為「正在前進」而且「前輪有角度」。速度是 0 的時候分子就是 0，
+        // 原地打轉在結構上不可能發生——不需要任何 if (speed < x) 的特判去補
+        double angularVel = (this.speed / WHEELBASE) * Math.tan(Math.toRadians(this.steerAngle));
+        float yawDelta = (float) Math.toDegrees(angularVel);
+        // 甩尾時後輪在滑，車身轉得比幾何算出來的更多。這一項是手感，不是物理
+        if (this.drifting) yawDelta *= DRIFT_YAW_GAIN;
+        if (yawDelta != 0f) {
+            this.setYRot(this.getYRot() + yawDelta);
+            this.setYHeadRot(this.getYRot());
+            // 車轉多少，騎士的視角就跟著轉多少
+            for (Entity passenger : this.getPassengers()) rotateWith(passenger, yawDelta);
+        }
+
+        // ---- 4. 用更新後的車頭方向算出目標速度 -----------------------------------
+        Vec3 forward = new Vec3(-Mth.sin(this.getYRot() * Mth.DEG_TO_RAD), 0.0,
+                Mth.cos(this.getYRot() * Mth.DEG_TO_RAD));
+        Vec3 side = new Vec3(-forward.z, 0.0, forward.x);
+
+        // ---- 5. 抓地力：側向分量要被輪胎吃掉 -------------------------------------
+        //
+        // 上一 tick 的速度是沿著「上一個」車頭方向的；車頭轉過去之後，那股慣性就有一部分
+        // 變成側向的。輪胎的工作就是把它吃掉——吃得越乾淨，車越像走在軌道上；留得越多，
+        // 車越像在冰上。SIDE_KEEP_* 是「留下來的比例」，不是抓地力本身
+        double lateral = this.planar.dot(side)
+                * (this.drifting ? SIDE_KEEP_DRIFT : SIDE_KEEP_GRIP);
+        this.planar = forward.scale(this.speed).add(side.scale(lateral));
+
+        // ---- 6. 重力與位移 -------------------------------------------------------
+        Vec3 was = this.position();
+        double vy = this.onGround()
+                ? Math.max(this.getDeltaMovement().y, -0.08)
+                : this.getDeltaMovement().y - 0.08;
+        this.setDeltaMovement(this.planar.x, vy, this.planar.z);
+        this.move(MoverType.SELF, this.getDeltaMovement());
+
+        // ---- 7. 依碰撞結果回寫速度 -----------------------------------------------
+        applyCollision(was);
+
+        // ---- 8. 壓車角度（純視覺）-----------------------------------------------
+        //
+        // 分母用「目前的把手上限」而不是固定的 45 度：高速時把手只能打 8 度，除以 45
+        // 的話全速過彎只傾 4 度，看起來像在滑冰。機車過彎就是靠傾的，而這是畫面上唯一
+        // 看得出「他正在過彎」的東西
+        float targetLean = -(this.steerAngle / lock) * MAX_LEAN * pace;
+        this.leanAngle = Mth.lerp(0.25f, this.leanAngle, targetLean);
+        if (!this.level().isClientSide()) {
+            this.entityData.set(DATA_LEAN, this.leanAngle);
+        }
+    }
+
+    /**
+     * 速度：油門、煞車、倒車、滑行阻力。
+     *
+     * <p>這裡完全不碰方向。速度是純量，方向是 {@link #tickPhysics} 第三步的事。
+     */
+    private void updateSpeed(boolean ridden, boolean wet) {
+        if (this.boostTicks > 0) this.boostTicks--;
+
+        if (!ridden) {
+            // 沒人騎（或熄火）：很快停住。船那種滑行慣性放在機車上會變成停好之後自己飄走
+            this.speed *= wet ? 0.5 : IDLE_FRICTION;
+            if (Math.abs(this.speed) < 0.003) this.speed = 0.0;
+            return;
+        }
+
+        double cap = this.boostTicks > 0 ? MAX_SPEED * BOOST_OVERSPEED : MAX_SPEED;
+        if (this.throttle > 0.01f) {
+            this.speed = Math.min(this.speed + THROTTLE * (this.boostTicks > 0 ? 1.8 : 1.0), cap);
+        } else if (this.throttle < -0.01f) {
+            // 同一個鍵：還在前進就是煞車，停住之後才變倒車。
+            // 甩尾中只給三成煞車：甩尾要保住速度，不然過彎永遠比直直騎慢
+            double brake = this.drifting ? BRAKE * 0.3 : BRAKE;
+            this.speed = this.speed > 0.01
+                    ? Math.max(this.speed - brake, 0.0)
+                    : Math.max(this.speed - THROTTLE * 0.6, -MAX_REVERSE);
+        } else {
+            this.speed *= COAST_FRICTION;
+            if (Math.abs(this.speed) < 0.004) this.speed = 0.0;
+        }
+        // 加速結束後速度會超過上限，讓它自己收回來，不要硬切
+        if (this.speed > cap) this.speed = Math.max(cap, this.speed * 0.97);
+    }
+
+    /**
+     * 撞到東西：位移被擋下來，速度也要跟著掉。
+     *
+     * <p>比對「想走多遠」與「實際走了多遠」，而不是看 {@code horizontalCollision} 旗標。
+     * 貼著牆慢慢騎也會一直是 collision，用旗標判定的話車會在牆邊被慢慢磨壞；而只擋位移
+     * 不扣速度的話，車會「貼著牆全速蹭」，一離開牆面又瞬間彈出去。
+     */
+    private void applyCollision(Vec3 was) {
+        double intended = Math.sqrt(this.planar.x * this.planar.x + this.planar.z * this.planar.z);
+        if (intended < 1.0e-6) return;
+
+        Vec3 moved = this.position().subtract(was);
+        double actual = Math.sqrt(moved.x * moved.x + moved.z * moved.z);
+        if (actual >= intended - 1.0e-4) return;
+
+        double kept = actual / intended;
+        this.speed *= kept;
+        this.planar = this.planar.scale(kept);
+
+        // 真的撞上去才算撞車：夠快，而且大部分的速度是這一格掉的
+        if (Math.abs(this.lastSpeed) >= CRASH_SPEED && kept < 0.5 && !this.level().isClientSide()) {
+            this.speed = 0.0;
+            this.setDamage(this.getDamage() + (float) Math.abs(this.lastSpeed) * 22f);
+            this.setHurtTime(10);
+            this.playSound(SoundEvents.ANVIL_LAND, 0.6f, 1.6f);
+            if (this.getDamage() > 40f) {
+                this.destroy(this.level().getServer().overworld(), TaiwanItems.SCOOTER);
+            }
+        }
+    }
+
+    /**
+     * 甩尾（手煞車）：按著跳躍鍵轉彎。
+     *
+     * <p>輪胎不再吃掉側向的慣性（{@link #SIDE_KEEP_DRIFT}），車身於是橫著滑出去，油門照給。
+     * 撐過 {@link #DRIFT_CHARGE} tick 再放開就有一段加速——過彎不是損失而是收益，
+     * 這條規則就是跑跑卡丁車的彎道比直線好玩的原因。
+     *
+     * <p>用跳躍鍵是因為蹲下鍵在 Minecraft 裡是「下車」，而前後鍵是同一個軸：
+     * 同時按 W 和 S 會相消成 0，「油門＋煞車」這種常見的甩尾組合在這裡讀不出來。
+     */
+    private void updateDrift(Player rider, float steerInput) {
+        boolean want = rider != null && jumpHeld(rider) && Math.abs(steerInput) > 0.1f
+                && this.speed > DRIFT_MIN_SPEED && this.onGround();
+        if (want) {
+            this.driftTicks++;
+        } else if (this.driftTicks > 0) {
+            if (this.driftTicks >= DRIFT_CHARGE) {
+                this.boostTicks = BOOST_TICKS;
+                this.speed = Math.min(this.speed + 0.06, MAX_SPEED * BOOST_OVERSPEED);
+                if (this.level() instanceof ServerLevel server) {
+                    server.sendParticles(ParticleTypes.CLOUD, this.getX(), this.getY() + 0.3,
+                            this.getZ(), 8, 0.2, 0.1, 0.2, 0.02);
+                }
+            }
+            this.driftTicks = 0;
+        }
+        this.drifting = want;
+    }
+
+    /**
+     * 騎士有沒有按著跳躍鍵。
+     *
+     * <p>兩邊拿的是同一份輸入，只是入口不同：伺服器端只有 {@code ServerPlayer} 收得到輸入
+     * 封包；客戶端的 {@code LocalPlayer} 則在 {@code applyInput()} 裡把跳躍鍵寫進
+     * {@code jumping}——跟 {@code xxa}／{@code zza} 同一個地方，所以兩邊算出來會一致。
+     */
+    private static boolean jumpHeld(Player rider) {
+        return rider instanceof net.minecraft.server.level.ServerPlayer server
+                ? server.getLastClientInput().jump()
+                : rider.isJumping();
+    }
+
+    /** 落水的白煙與甩尾的燒胎煙。 */
+    private void particles(boolean wet) {
+        if (!(this.level() instanceof ServerLevel server)) return;
+        if (wet && this.tickCount % 10 == 0) {
             server.sendParticles(ParticleTypes.SMOKE, this.getX(), this.getY() + 0.6, this.getZ(),
                     3, 0.15, 0.1, 0.15, 0.01);
         }
-        // 燒胎的白煙。甩尾在畫面上要看得出來，不然玩家只會覺得「車怎麼在飄」
-        if (this.drifting && this.level() instanceof ServerLevel server) {
+        // 甩尾在畫面上要看得出來，不然玩家只會覺得「車怎麼在飄」
+        if (this.drifting) {
             Vec3 back = new Vec3(Mth.sin(this.getYRot() * Mth.DEG_TO_RAD), 0.0,
                     -Mth.cos(this.getYRot() * Mth.DEG_TO_RAD)).scale(0.55);
             server.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE,
@@ -337,199 +532,14 @@ public class Scooter extends VehicleEntity {
     }
 
     /**
-     * 油門、煞車、倒車、轉向、甩尾。
+     * 上得了騎樓與路緣石。
      *
-     * <h3>轉向不再隨速度垮掉</h3>
-     * <p>之前高速時轉向率被砍掉一半以上（×0.45），本意是「高速要穩」，實際的手感是
-     * 騎快了就轉不動——玩家按著方向鍵，車卻慢慢地畫一個大圓，這就是「轉向有問題」的來源。
-     * 現在高速只扣兩成，路口該轉得過去就轉得過去。真正負責「高速比較難控制」的，
-     * 改由抓地力（{@link #grip()}）處理：車頭轉得動，但車身會外拋，那才是速度的代價。
-     *
-     * <h3>甩尾：跳躍鍵 ＋ 方向</h3>
-     * <p>按著跳躍鍵轉彎就進入甩尾：輪胎失去抓地力，車身橫著滑出去，但油門照給。
-     * 撐過 {@link #DRIFT_CHARGE} tick 再放開就有一段加速——這是跑跑卡丁車那條「過彎不是損失，
-     * 是收益」的規則，也是為什麼那個遊戲的彎道比直線好玩。
-     *
-     * <p>用跳躍鍵是因為蹲下鍵在 Minecraft 裡是「下車」，而前後鍵是同一個軸：
-     * 同時按 W 和 S 會相消成 0，所以「油門＋煞車」這種常見的甩尾組合在這裡讀不出來。
+     * <p>台灣的路邊到處是 10～20 公分的高低差，在 Minecraft 裡那就是一整格。上不去的話，
+     * 機車只能騎在馬路正中央，而「停到騎樓邊」是這台車存在的理由之一。
      */
-    private void drive(Player rider) {
-        float turn = -rider.xxa;
-        float gas = rider.zza;
-        float pace = Math.min(Math.abs(this.speed) / MAX_SPEED, 1f);
-
-        boolean wantDrift = jumpHeld(rider) && Math.abs(turn) > 0.1f
-                && this.speed > DRIFT_MIN_SPEED && this.onGround();
-        if (wantDrift) {
-            this.driftTicks++;
-        } else if (this.driftTicks > 0) {
-            releaseDrift();
-        }
-        this.drifting = wantDrift;
-
-        steerAndTurn(turn, pace);
-
-        if (this.boostTicks > 0) this.boostTicks--;
-        float cap = this.boostTicks > 0 ? MAX_SPEED * BOOST_OVERSPEED : MAX_SPEED;
-
-        if (gas > 0.01f) {
-            this.speed = Math.min(this.speed + THROTTLE * (this.boostTicks > 0 ? 1.8f : 1f), cap);
-        } else if (gas < -0.01f) {
-            // 同一個鍵：還在前進就是煞車，停住之後才變倒車。
-            // 甩尾中只給三成煞車：甩尾要保住速度，不然過彎永遠比直直騎慢
-            float brake = this.drifting ? BRAKE * 0.3f : BRAKE;
-            this.speed = this.speed > 0.01f
-                    ? Math.max(this.speed - brake, 0f)
-                    : Math.max(this.speed - THROTTLE * 0.6f, -MAX_REVERSE);
-        } else {
-            this.speed *= COAST_FRICTION;
-            if (Math.abs(this.speed) < 0.004f) this.speed = 0f;
-        }
-        // 加速結束後速度會超過上限，讓它自己收回來，不要硬切
-        if (this.speed > cap) this.speed = Math.max(cap, this.speed * 0.97f);
-        this.setYHeadRot(this.getYRot());
-    }
-
-    /**
-     * 轉向。
-     *
-     * <h3>先轉輪胎，車再跟著輪胎走</h3>
-     * <p>之前是「按著方向鍵，車頭每 tick 就轉固定的角度」。那個做法把車當成一個會自轉的
-     * 箭頭：轉多少跟輪胎指哪裡無關、跟車跑多快也無關。停在原地按方向鍵會原地打轉，
-     * 高速時又轉不過來，怎麼調參數都不對——因為錯的不是參數，是模型。
-     *
-     * <p>現在照真的兩輪車來算：龍頭有一個角度（{@link #steer}），車沿著前輪指的方向走，
-     * 後輪跟著滾，於是整台車繞著一個圓心走。那個圓的半徑是
-     * {@code 軸距 ÷ tan(龍頭角度)}，而每 tick 轉過的角度就是「走了多遠 ÷ 半徑」。
-     *
-     * <p>兩個直接的後果，也正是騎起來「對」的地方：
-     * <ul>
-     *   <li><b>轉多少跟速度成正比</b>：慢慢滑行時龍頭打死也只是慢慢繞，油門一催就轉得快。
-     *       停著不動的時候，龍頭轉了車也不會轉——輪胎沒有滾動，哪來的轉向。</li>
-     *   <li><b>轉完就直行</b>：放開方向鍵龍頭自己回正，車立刻沿著新的方向走直線，
-     *       不會繼續飄。</li>
-     * </ul>
-     *
-     * <p>龍頭本身有轉動速度上限（{@link #STEER_RATE}），所以方向是「打」出來的而不是
-     * 瞬間切換——這也是為什麼車頭的動作看起來有重量。
-     *
-     * @param turn 方向鍵，-1（左）到 1（右）
-     * @param pace 目前速度佔最高速的比例
-     */
-    private void steerAndTurn(float turn, float pace) {
-        // 速度越快，龍頭能打的角度越小。真的騎車就是這樣：高速全打死等於摔車
-        float lock = Mth.lerp(pace, STEER_LOCK_SLOW, STEER_LOCK_FAST);
-        float target = Math.abs(turn) > 0.01f ? Mth.clamp(turn, -1f, 1f) * lock : 0f;
-        this.steer = Mth.approach(this.steer, target, target == 0f ? STEER_RETURN : STEER_RATE);
-        if (!this.level().isClientSide()) {
-            this.entityData.set(DATA_STEER, this.steer);
-        }
-
-        // 走了多遠 ÷ 迴轉半徑 ＝ 這一 tick 轉過的角度。
-        // **用 abs(speed)**：倒車時龍頭往左、車尾往左（車頭往右）才是真的，但在遊戲裡
-        // 玩家只會覺得「按左卻往右」。一律照按鍵的方向轉
-        float yaw = Math.abs(this.speed) / WHEELBASE
-                * (float) Math.tan(this.steer * Mth.DEG_TO_RAD) * Mth.RAD_TO_DEG;
-        // 甩尾中車頭轉得更快：滑出去的時候要有辦法用車頭去指你要走的方向，不然只是失控
-        if (this.drifting) yaw *= 1.35f;
-
-        // 幾乎停住時用牽的。物理上停著的車轉龍頭是不會動的，但玩家需要把停好的車
-        // 撥個方向再出發——不給的話會覺得車卡住了
-        if (Math.abs(this.speed) < 0.02f && Math.abs(turn) > 0.01f) {
-            yaw = Math.signum(turn) * WALK_TURN;
-        }
-        if (yaw != 0f) {
-            this.setYRot(this.getYRot() + yaw);
-            this.setYHeadRot(this.getYRot());
-        }
-    }
-
-    /**
-     * 抓地力：把行進方向拉向車頭方向。
-     *
-     * <p>平常騎的時候這幾乎是恆等式——{@link #steerAndTurn} 已經算好車頭該轉去哪裡，
-     * 車就往那裡走，不會有「車頭朝這邊、車身往那邊滑」的橡皮筋感。留 0.15 的餘量
-     * 只是為了讓甩尾結束、抓地力回來的那一下有一兩格的過渡，不要硬切。
-     *
-     * <p>真正用到它的是甩尾：抓地力掉到 {@link #DRIFT_GRIP}，車頭轉了但車身跟不上，
-     * 那個差額（側滑角）就是甩出去的角度。側滑角有上限，而且會吃掉速度——不然車就變成
-     * 可以無成本橫移的東西：一邊全速前進一邊面向側面，看起來很蠢，玩起來也沒有取捨。
-     */
-    private void grip() {
-        if (Math.abs(this.speed) < 0.06f) {
-            // 幾乎停住：直接對齊。也順便處理「剛讀檔進來」的情況——velYaw 沒有存檔，
-            // 一開始是 0，不對齊的話車會朝著北方橫著滑出去
-            this.velYaw = this.getYRot();
-            return;
-        }
-
-        float grip = this.drifting ? DRIFT_GRIP : 0.85f;
-        this.velYaw += Mth.wrapDegrees(this.getYRot() - this.velYaw) * grip;
-
-        float slip = Mth.wrapDegrees(this.getYRot() - this.velYaw);
-        float max = this.drifting ? 45f : 30f;
-        if (Math.abs(slip) > max) {
-            slip = Math.signum(slip) * max;
-            this.velYaw = this.getYRot() - slip;
-        }
-        // 橫著走要付出速度。甩尾付得少一點，那是它的獎勵
-        this.speed *= 1f - Math.abs(slip) * (this.drifting ? 0.0006f : 0.0011f);
-    }
-
-    /**
-     * 放開甩尾。撐得夠久就給一段加速。
-     *
-     * <p>加速的量刻意不大（超過最高速兩成多、持續一秒）：它要值得為它甩一次尾，
-     * 但不能變成「不甩尾就別想跟人比」。
-     */
-    private void releaseDrift() {
-        if (this.driftTicks >= DRIFT_CHARGE) {
-            this.boostTicks = BOOST_TICKS;
-            this.speed = Math.min(this.speed + 0.06f, MAX_SPEED * BOOST_OVERSPEED);
-            if (this.level() instanceof ServerLevel server) {
-                server.sendParticles(ParticleTypes.CLOUD, this.getX(), this.getY() + 0.3, this.getZ(),
-                        8, 0.2, 0.1, 0.2, 0.02);
-            }
-        }
-        this.driftTicks = 0;
-    }
-
-    /**
-     * 騎士有沒有按著跳躍鍵。
-     *
-     * <p>兩邊拿的是同一份輸入，只是入口不同：伺服器端只有 {@code ServerPlayer} 收得到
-     * 輸入封包；客戶端的 {@code LocalPlayer} 則在 {@code applyInput()} 裡把跳躍鍵寫進
-     * {@code jumping}——跟 {@code xxa}／{@code zza} 同一個地方，所以兩邊算出來會一致。
-     * 不一致的話，甩尾在伺服器上發生、在你的畫面上沒有，車就會一直被拉回去。
-     */
-    private static boolean jumpHeld(Player rider) {
-        return rider instanceof net.minecraft.server.level.ServerPlayer server
-                ? server.getLastClientInput().jump()
-                : rider.isJumping();
-    }
-
-    /**
-     * 撞牆。
-     *
-     * <p>用「這一 tick 掉了多少速度」判定，而不是用碰撞旗標：低速貼著牆走也會一直
-     * {@code horizontalCollision}，那樣車會在牆邊慢慢被磨壞。只有真的高速撞上去才算。
-     */
-    private void checkCrash() {
-        if (!this.horizontalCollision) return;
-        float lost = Math.abs(this.lastSpeed) - Math.abs(this.speed);
-        if (Math.abs(this.lastSpeed) < CRASH_SPEED || lost < CRASH_SPEED * 0.5f) {
-            this.speed = 0f;
-            return;
-        }
-        this.speed = 0f;
-        if (this.level().isClientSide()) return;
-
-        this.setDamage(this.getDamage() + Math.abs(this.lastSpeed) * 22f);
-        this.setHurtTime(10);
-        this.playSound(SoundEvents.ANVIL_LAND, 0.6f, 1.6f);
-        if (this.getDamage() > 40f) {
-            this.destroy(this.level().getServer().overworld(), TaiwanItems.SCOOTER);
-        }
+    @Override
+    public float maxUpStep() {
+        return 1.0f;
     }
 
     /**
@@ -581,6 +591,6 @@ public class Scooter extends VehicleEntity {
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         if (this.owner != null) output.store("owner", net.minecraft.core.UUIDUtil.CODEC, this.owner);
-        output.putFloat("speed", this.speed);
+        output.putFloat("speed", (float) this.speed);
     }
 }

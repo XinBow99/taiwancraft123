@@ -46,8 +46,9 @@ public class ScooterRenderer extends EntityRenderer<Scooter, ScooterRenderState>
         float horizontal = (float) Math.sqrt(motion.x * motion.x + motion.z * motion.z);
         state.wheelSpin = (entity.tickCount + partialTick) * horizontal * 1.6f;
         state.steer = entity.steerAngle();
-        // 轉彎壓車：龍頭轉多少就傾一半。機車過彎是靠傾的，不傾會像在滑冰
-        state.lean = -entity.steerAngle() * 0.5f;
+        // 壓車角度是實體自己算的（把手角度 × 速度），不是這裡從把手角度推的：
+        // 高速時把手只打得動 8 度，用「龍頭的一半」去傾，全速過彎會只傾 4 度像在滑冰
+        state.lean = entity.leanAngle();
         state.yRot = entity.getYRot();
     }
 
