@@ -178,11 +178,66 @@ public class Scooter extends VehicleEntity {
         return new Vec3(0.0, 0.82, pillion ? -0.42 : 0.02);
     }
 
+    /**
+     * 上車就把視角轉到車頭方向。
+     *
+     * <p>沒有這一下，「前面」是你上車那一刻剛好在看的方向：從側邊上車，按 W 車往前衝，
+     * 畫面上看起來卻是往右跑；從後面上車就變成「按 W 倒退」。左右也跟著錯亂——
+     * 方向鍵轉的是車，而車跟你的畫面沒有對齊。
+     *
+     * <p>{@code addPassenger} 兩邊都會跑到（客戶端是收到乘客封包時），所以本地玩家的
+     * 鏡頭真的會轉過去——鏡頭是客戶端說了算的，只在伺服器上轉沒有用。
+     */
+    @Override
+    protected void addPassenger(Entity passenger) {
+        super.addPassenger(passenger);
+        faceForward(passenger);
+    }
+
+    private void faceForward(Entity passenger) {
+        float yaw = this.getYRot();
+        passenger.setYRot(yaw);
+        passenger.yRotO = yaw;
+        passenger.setYHeadRot(yaw);
+        if (passenger instanceof LivingEntity living) {
+            living.yHeadRot = yaw;
+            living.yHeadRotO = yaw;
+            living.yBodyRot = yaw;
+            living.yBodyRotO = yaw;
+        }
+    }
+
+    /**
+     * 車轉多少，乘客的視角就跟著轉多少。
+     *
+     * <p>這是「機車沒有跟座標軸綁在一起」的真正原因：之前只把乘客的視角**夾**在車頭
+     * ±105 度以內，所以車在你底下轉了 90 度，鏡頭卻一動也不動——轉個兩次，你的畫面
+     * 就朝著側面甚至後面，按 W 於是「像倒著跑」。
+     *
+     * <p>改成跟著轉之後，車頭永遠是畫面的正前方，而 ±105 度的夾角仍然留著：你還是
+     * 可以轉頭看旁邊，只是放開滑鼠時整台車跟畫面是對齊的。
+     *
+     * <p>{@code yRotO} 之類的「上一 tick」欄位要一起加，不然算繪的內插會把這一格
+     * 的轉動畫成一次回甩，畫面會抖。
+     */
+    private static void rotateWith(Entity passenger, float delta) {
+        passenger.setYRot(passenger.getYRot() + delta);
+        passenger.yRotO += delta;
+        passenger.setYHeadRot(passenger.getYHeadRot() + delta);
+        if (passenger instanceof LivingEntity living) {
+            living.yHeadRotO += delta;
+            living.yBodyRot += delta;
+            living.yBodyRotO += delta;
+        }
+    }
+
     @Override
     protected void positionRider(Entity passenger, Entity.MoveFunction move) {
         super.positionRider(passenger, move);
-        // 讓乘客跟著車頭方向，不然人會朝著自己上車前的方向坐著
+        // 身體固定朝車頭，只有頭可以轉。人是跨坐在車上的，身體不可能面向側面
         passenger.setYBodyRot(this.getYRot());
+        // 視角可以左右各看 105 度（看後照鏡、看巷口），但不能超過——超過就代表
+        // 畫面跟車已經脫節了
         float diff = Mth.wrapDegrees(passenger.getYRot() - this.getYRot());
         passenger.setYRot(this.getYRot() + Mth.clamp(diff, -105f, 105f));
         passenger.setYHeadRot(passenger.getYRot());
@@ -213,6 +268,12 @@ public class Scooter extends VehicleEntity {
                 this.entityData.set(DATA_STEER,
                         Mth.lerp(0.3f, this.entityData.get(DATA_STEER), 0f));
             }
+        }
+
+        // 車這一 tick 轉了多少，乘客的視角就跟著轉多少
+        float turned = Mth.wrapDegrees(this.getYRot() - this.yRotO);
+        if (turned != 0f) {
+            for (Entity passenger : this.getPassengers()) rotateWith(passenger, turned);
         }
 
         grip();
