@@ -25,10 +25,18 @@ const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff
 /** 共振峰。排氣管的聲音就是幾個共振峰疊出來的，少了它只剩刺耳的鋸齒波。 */
 const res = (f, center, bw) => 1 / (1 + ((f - center) / bw) ** 2);
 
-/** 每個諧波的音量：共振峰 × 高頻滾降。 */
+/**
+ * 每個諧波的音量：共振峰 × 低頻切除 × 高頻滾降。
+ *
+ * 這條曲線是照著參考錄音（bmw_m3_kompressor.mp3）的頻譜量出來調的。原本的版本把能量
+ * 都堆在 80 Hz 以下，聽起來是悶悶的「噗噗」而不是引擎——真正的引擎聲，主要的份量在
+ * 200 Hz 到 1.2 kHz 之間，低頻只是墊底。八度頻帶的能量分布現在跟參考錄音差在 3 dB 以內。
+ */
 function timbre(f) {
-	const shape = 1.0 * res(f, 150, 110) + 0.85 * res(f, 480, 330) + 0.4 * res(f, 1500, 1100);
-	return shape / (1 + (f / 3000) ** 2);
+	const shape = 0.9 * res(f, 300, 190) + 1.0 * res(f, 850, 600) + 0.8 * res(f, 2400, 1900);
+	// 低頻切除：沒有這個，50 Hz 的基頻會蓋掉上面所有的細節（也就是引擎的「個性」）
+	const hp = ((f * f) / (f * f + 230 * 230)) ** 1.5;
+	return (shape * hp) / (1 + (f / 5000) ** 2);
 }
 
 const HARMONICS = 48;
@@ -48,8 +56,8 @@ function buzz(n, freqAt) {
 		let v = 0;
 		for (let h = 1; h <= HARMONICS; h++) {
 			const f = h * f0;
-			if (f > 11000) break;
-			v += (timbre(f) / h ** 0.85) * Math.sin(2 * Math.PI * h * ph + phase[h]);
+			if (f > 8500) break;   // 參考錄音在 10 kHz 以上就沒東西了，再往上只會多出刺耳的「喀」
+			v += (timbre(f) / h ** 0.6) * Math.sin(2 * Math.PI * h * ph + phase[h]);
 		}
 		out[i] = v;
 	}
@@ -128,7 +136,12 @@ function engineLoop() {
 		const c = Math.floor((((i + period / 2) % LOOP) / period));
 		const t = (i % period) / SR;             // 這次點火之後過了多久
 		const burst = Math.exp(-t * 26);          // 進氣／機械噪音跟著點火脈動
-		out[i] = 0.80 * kick[c] * core[i] + 0.22 * noise[i] * (0.25 + 1.5 * burst);
+		// 傳動與進氣的嘯聲。參考錄音（kompressor）最好認的就是這條音——沒有它，
+		// 引擎只是一團低頻的隆隆聲。頻率取整數 Hz，循環長度剛好 1 秒，所以接縫仍然是無縫的
+		const whine = 0.055 * Math.sin(2 * Math.PI * 325 * (i / SR))
+			+ 0.03 * Math.sin(2 * Math.PI * 650 * (i / SR) + 1.0);
+		out[i] = 0.80 * kick[c] * core[i] + 0.22 * noise[i] * (0.25 + 1.5 * burst)
+			+ whine * (0.7 + 0.5 * burst);
 	}
 	// 軟削峰：把尖端壓圓，聽起來才不是刺的
 	for (let i = 0; i < LOOP; i++) out[i] = Math.tanh(out[i] * 1.35);

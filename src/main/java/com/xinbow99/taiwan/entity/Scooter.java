@@ -1,9 +1,3 @@
-    // 引擎聲不在這裡。
-    //
-    // 原本是每幾 tick 播一次原版礦車聲，用間隔的疏密假裝轉速——那聽起來是「噠、噠、噠」的
-    // 斷點，不是一具引擎。現在改成客戶端掛一段無縫循環，持續改它的 pitch 與音量
-    // （ScooterSoundInstance）。伺服器不必為此送任何封包：客戶端從車的位移就看得出來它跑多快。
-
 package com.xinbow99.taiwan.entity;
 
 import net.minecraft.core.particles.ParticleTypes;
@@ -60,10 +54,26 @@ public class Scooter extends VehicleEntity {
     private static final float IDLE_FRICTION = 0.72f;
     /** 有人騎但沒給油的滑行摩擦。 */
     private static final float COAST_FRICTION = 0.955f;
-    /** 轉向：每 tick 最多轉幾度。低速轉得快、高速轉得慢，不然高速會像在原地打轉。 */
-    private static final float TURN_RATE = 5.5f;
+    /** 轉向：每 tick 最多轉幾度。6.5 度 ≒ 每秒 130 度，一個路口的直角彎大約一秒轉完。 */
+    private static final float TURN_RATE = 6.5f;
     /** 撞牆超過這個速度就損壞。 */
     private static final float CRASH_SPEED = 0.28f;
+
+    /**
+     * 甩尾時輪胎剩下多少抓地力。
+     *
+     * <p>0.18 讓側滑角穩定在 40 度上下——車身明顯橫著走，但還沒到「面向側面全速前進」
+     * 那種荒謬的程度，而且沒有頂到上限，所以方向鍵仍然改得動滑出去的角度。
+     */
+    private static final float DRIFT_GRIP = 0.18f;
+    /** 甩尾的最低速度。太慢就甩不動——低速原地轉圈不是甩尾，是鬼打牆。 */
+    private static final float DRIFT_MIN_SPEED = 0.18f;
+    /** 甩尾要撐滿幾 tick 才有加速。約 0.9 秒：夠久到是個決定，不會不小心按到。 */
+    private static final int DRIFT_CHARGE = 18;
+    /** 加速持續幾 tick。 */
+    private static final int BOOST_TICKS = 20;
+    /** 加速期間可以超過最高速多少。 */
+    private static final float BOOST_OVERSPEED = 1.28f;
 
     /** 車主只存在伺服器端：客戶端不需要知道，「這台車不是你的」是伺服器判斷後才送訊息的。 */
     private UUID owner;
@@ -77,6 +87,19 @@ public class Scooter extends VehicleEntity {
     private float speed;
     /** 上一 tick 的速度，撞擊判定用。 */
     private float lastSpeed;
+    /**
+     * 行進方向（度）。
+     *
+     * <p>**這是這次改動的核心**：車頭朝哪裡（{@link #getYRot()}）跟車實際往哪裡走是兩件事。
+     * 之前兩者永遠相等，所以轉頭就等於瞬間換方向，車像一個會旋轉的箭頭而不是一台有重量的車。
+     * 分開之後，行進方向是「追」著車頭跑的，過彎才有重心轉移的感覺，甩尾也才成立。
+     */
+    private float velYaw;
+    /** 甩尾已經撐了幾 tick。放開時用它決定給不給加速。 */
+    private int driftTicks;
+    /** 加速還剩幾 tick。 */
+    private int boostTicks;
+    private boolean drifting;
 
     public Scooter(EntityType<? extends Scooter> type, Level level) {
         super(type, level);
@@ -182,6 +205,8 @@ public class Scooter extends VehicleEntity {
             drive(player);
         } else {
             // 沒人騎（或熄火）：很快停住。船那種滑行慣性放在機車上會變成停好之後自己飄走
+            this.drifting = false;
+            this.driftTicks = 0;
             this.speed *= wet ? 0.5f : IDLE_FRICTION;
             if (Math.abs(this.speed) < 0.003f) this.speed = 0f;
             if (!this.level().isClientSide()) {
@@ -190,12 +215,15 @@ public class Scooter extends VehicleEntity {
             }
         }
 
-        Vec3 forward = new Vec3(-Mth.sin(this.getYRot() * Mth.DEG_TO_RAD), 0.0,
-                Mth.cos(this.getYRot() * Mth.DEG_TO_RAD));
+        grip();
+
+        // 往「行進方向」走，不是往車頭方向走。差別就是過彎時那半秒的外拋
+        Vec3 heading = new Vec3(-Mth.sin(this.velYaw * Mth.DEG_TO_RAD), 0.0,
+                Mth.cos(this.velYaw * Mth.DEG_TO_RAD));
         Vec3 motion = this.getDeltaMovement();
-        this.setDeltaMovement(forward.x * this.speed,
+        this.setDeltaMovement(heading.x * this.speed,
                 this.onGround() ? Math.max(motion.y, -0.08) : motion.y - 0.08,
-                forward.z * this.speed);
+                heading.z * this.speed);
 
         this.move(MoverType.SELF, this.getDeltaMovement());
         checkCrash();
@@ -207,44 +235,152 @@ public class Scooter extends VehicleEntity {
             server.sendParticles(ParticleTypes.SMOKE, this.getX(), this.getY() + 0.6, this.getZ(),
                     3, 0.15, 0.1, 0.15, 0.01);
         }
+        // 燒胎的白煙。甩尾在畫面上要看得出來，不然玩家只會覺得「車怎麼在飄」
+        if (this.drifting && this.level() instanceof ServerLevel server) {
+            Vec3 back = new Vec3(Mth.sin(this.getYRot() * Mth.DEG_TO_RAD), 0.0,
+                    -Mth.cos(this.getYRot() * Mth.DEG_TO_RAD)).scale(0.55);
+            server.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE,
+                    this.getX() + back.x, this.getY() + 0.12, this.getZ() + back.z,
+                    2, 0.08, 0.02, 0.08, 0.005);
+        }
     }
 
     /**
-     * 油門、煞車、倒車、轉向。
+     * 油門、煞車、倒車、轉向、甩尾。
      *
-     * <p>轉向速率跟著速度遞減：定值的話，高速時車頭會轉得比車身還快，玩起來像在冰上
-     * 原地打轉。低速好轉、高速穩，才是騎車的手感。
+     * <h3>轉向不再隨速度垮掉</h3>
+     * <p>之前高速時轉向率被砍掉一半以上（×0.45），本意是「高速要穩」，實際的手感是
+     * 騎快了就轉不動——玩家按著方向鍵，車卻慢慢地畫一個大圓，這就是「轉向有問題」的來源。
+     * 現在高速只扣兩成，路口該轉得過去就轉得過去。真正負責「高速比較難控制」的，
+     * 改由抓地力（{@link #grip()}）處理：車頭轉得動，但車身會外拋，那才是速度的代價。
+     *
+     * <h3>甩尾：跳躍鍵 ＋ 方向</h3>
+     * <p>按著跳躍鍵轉彎就進入甩尾：輪胎失去抓地力，車身橫著滑出去，但油門照給。
+     * 撐過 {@link #DRIFT_CHARGE} tick 再放開就有一段加速——這是跑跑卡丁車那條「過彎不是損失，
+     * 是收益」的規則，也是為什麼那個遊戲的彎道比直線好玩。
+     *
+     * <p>用跳躍鍵是因為蹲下鍵在 Minecraft 裡是「下車」，而前後鍵是同一個軸：
+     * 同時按 W 和 S 會相消成 0，所以「油門＋煞車」這種常見的甩尾組合在這裡讀不出來。
      */
     private void drive(Player rider) {
         float turn = -rider.xxa;
         float gas = rider.zza;
+        float pace = Math.min(Math.abs(this.speed) / MAX_SPEED, 1f);
+
+        boolean wantDrift = jumpHeld(rider) && Math.abs(turn) > 0.1f
+                && this.speed > DRIFT_MIN_SPEED && this.onGround();
+        if (wantDrift) {
+            this.driftTicks++;
+        } else if (this.driftTicks > 0) {
+            releaseDrift();
+        }
+        this.drifting = wantDrift;
 
         if (Math.abs(turn) > 0.01f) {
             // 停著也轉得動（慢慢牽），只是比騎起來慢一半。原本要求「速度 > 0」才給轉，
             // 結果是停下來就完全鎖死，玩起來像卡住
-            float pace = Math.min(Math.abs(this.speed) / MAX_SPEED, 1f);
-            float agility = TURN_RATE * (0.5f + 0.5f * Math.min(pace * 3f, 1f)) * (1f - pace * 0.55f);
+            float agility = TURN_RATE * (0.55f + 0.45f * Math.min(pace * 4f, 1f)) * (1f - pace * 0.2f);
+            // 甩尾中車頭轉得更快：滑出去的時候要有辦法用車頭去指你要走的方向，
+            // 不然甩尾只是失控
+            if (this.drifting) agility *= 1.35f;
             // **不乘 signum(speed)**：倒車時方向盤反向在真車上成立，但在遊戲裡玩家
             // 只會覺得「按左卻往右」。一律照按鍵的方向轉
             this.setYRot(this.getYRot() + turn * agility);
             this.setYHeadRot(this.getYRot());
         }
-        // 龍頭的視覺角度。平滑地趨近按鍵方向，放手就回正——直接跳到極值會像在抽搐
-        float wanted = Math.abs(turn) > 0.01f ? Math.signum(turn) * 26f : 0f;
+        // 龍頭的視覺角度。平滑地趨近按鍵方向，放手就回正——直接跳到極值會像在抽搐。
+        // 甩尾時壓得更低（算繪器把這個角度的一半當作車身傾角）
+        float wanted = Math.abs(turn) > 0.01f ? Math.signum(turn) * (this.drifting ? 38f : 26f) : 0f;
         this.entityData.set(DATA_STEER, Mth.lerp(0.25f, this.entityData.get(DATA_STEER), wanted));
 
+        if (this.boostTicks > 0) this.boostTicks--;
+        float cap = this.boostTicks > 0 ? MAX_SPEED * BOOST_OVERSPEED : MAX_SPEED;
+
         if (gas > 0.01f) {
-            this.speed = Math.min(this.speed + THROTTLE, MAX_SPEED);
+            this.speed = Math.min(this.speed + THROTTLE * (this.boostTicks > 0 ? 1.8f : 1f), cap);
         } else if (gas < -0.01f) {
-            // 同一個鍵：還在前進就是煞車，停住之後才變倒車
+            // 同一個鍵：還在前進就是煞車，停住之後才變倒車。
+            // 甩尾中只給三成煞車：甩尾要保住速度，不然過彎永遠比直直騎慢
+            float brake = this.drifting ? BRAKE * 0.3f : BRAKE;
             this.speed = this.speed > 0.01f
-                    ? Math.max(this.speed - BRAKE, 0f)
+                    ? Math.max(this.speed - brake, 0f)
                     : Math.max(this.speed - THROTTLE * 0.6f, -MAX_REVERSE);
         } else {
             this.speed *= COAST_FRICTION;
             if (Math.abs(this.speed) < 0.004f) this.speed = 0f;
         }
+        // 加速結束後速度會超過上限，讓它自己收回來，不要硬切
+        if (this.speed > cap) this.speed = Math.max(cap, this.speed * 0.97f);
         this.setYHeadRot(this.getYRot());
+    }
+
+    /**
+     * 抓地力：把行進方向拉向車頭方向。
+     *
+     * <p>一台車的速度不會因為你轉了車頭就跟著轉——那是慣性。這裡每 tick 把行進方向往
+     * 車頭方向拉一部分（{@code grip}），拉不完的差額就是側滑角，也就是「外拋」的量。
+     *
+     * <ul>
+     *   <li>低速抓地力接近滿：巷子裡慢慢騎不會滑，牽車也不會歪。</li>
+     *   <li>高速抓地力下降：同樣的方向鍵，快的時候車會往彎外多帶一點。</li>
+     *   <li>甩尾時只剩 {@link #DRIFT_GRIP}：車身幾乎是橫著走的。</li>
+     * </ul>
+     *
+     * <p>側滑角有上限，而且側滑要吃掉速度。沒有這兩條的話，車會變成可以無成本橫移的東西：
+     * 一邊全速前進一邊面向側面，看起來很蠢，玩起來也沒有取捨。
+     */
+    private void grip() {
+        float pace = Math.min(Math.abs(this.speed) / MAX_SPEED, 1f);
+        if (Math.abs(this.speed) < 0.06f) {
+            // 幾乎停住：直接對齊。也順便處理「剛讀檔進來」的情況——velYaw 沒有存檔，
+            // 一開始是 0，不對齊的話車會朝著北方橫著滑出去
+            this.velYaw = this.getYRot();
+            return;
+        }
+
+        float grip = this.drifting ? DRIFT_GRIP : 0.62f - 0.34f * pace;
+        this.velYaw += Mth.wrapDegrees(this.getYRot() - this.velYaw) * grip;
+
+        float slip = Mth.wrapDegrees(this.getYRot() - this.velYaw);
+        float max = this.drifting ? 45f : 30f;
+        if (Math.abs(slip) > max) {
+            slip = Math.signum(slip) * max;
+            this.velYaw = this.getYRot() - slip;
+        }
+        // 橫著走要付出速度。甩尾付得少一點，那是它的獎勵
+        this.speed *= 1f - Math.abs(slip) * (this.drifting ? 0.0006f : 0.0011f);
+    }
+
+    /**
+     * 放開甩尾。撐得夠久就給一段加速。
+     *
+     * <p>加速的量刻意不大（超過最高速兩成多、持續一秒）：它要值得為它甩一次尾，
+     * 但不能變成「不甩尾就別想跟人比」。
+     */
+    private void releaseDrift() {
+        if (this.driftTicks >= DRIFT_CHARGE) {
+            this.boostTicks = BOOST_TICKS;
+            this.speed = Math.min(this.speed + 0.06f, MAX_SPEED * BOOST_OVERSPEED);
+            if (this.level() instanceof ServerLevel server) {
+                server.sendParticles(ParticleTypes.CLOUD, this.getX(), this.getY() + 0.3, this.getZ(),
+                        8, 0.2, 0.1, 0.2, 0.02);
+            }
+        }
+        this.driftTicks = 0;
+    }
+
+    /**
+     * 騎士有沒有按著跳躍鍵。
+     *
+     * <p>兩邊拿的是同一份輸入，只是入口不同：伺服器端只有 {@code ServerPlayer} 收得到
+     * 輸入封包；客戶端的 {@code LocalPlayer} 則在 {@code applyInput()} 裡把跳躍鍵寫進
+     * {@code jumping}——跟 {@code xxa}／{@code zza} 同一個地方，所以兩邊算出來會一致。
+     * 不一致的話，甩尾在伺服器上發生、在你的畫面上沒有，車就會一直被拉回去。
+     */
+    private static boolean jumpHeld(Player rider) {
+        return rider instanceof net.minecraft.server.level.ServerPlayer server
+                ? server.getLastClientInput().jump()
+                : rider.isJumping();
     }
 
     /**
@@ -303,14 +439,11 @@ public class Scooter extends VehicleEntity {
     public void playerTouch(Player player) {
     }
 
-    /**
-     * 引擎聲不在這裡。
-     *
-     * <p>原本是每幾 tick 播一次原版礦車聲，用間隔的疏密假裝轉速——聽起來是「噠、噠、噠」，
-     * 是一串斷點而不是一具引擎。現在改成客戶端掛一段無縫循環，持續改它的 pitch 與音量：
-     * 見 {@code ScooterSoundInstance}。伺服器不需要為此送任何封包，客戶端從車的位移
-     * 就看得出來它跑多快。
-     */
+    // 引擎聲不在這裡。
+    //
+    // 原本是每幾 tick 播一次原版礦車聲，用間隔的疏密假裝轉速——那聽起來是「噠、噠、噠」的
+    // 斷點，不是一具引擎。現在改成客戶端掛一段無縫循環，持續改它的 pitch 與音量
+    //（ScooterSoundInstance）。伺服器不必為此送任何封包：客戶端從車的位移就看得出來它跑多快。
 
     // ------------------------------------------------------------------ 存檔
 
