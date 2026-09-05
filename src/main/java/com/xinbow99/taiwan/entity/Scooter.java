@@ -1,3 +1,9 @@
+    // 引擎聲不在這裡。
+    //
+    // 原本是每幾 tick 播一次原版礦車聲，用間隔的疏密假裝轉速——那聽起來是「噠、噠、噠」的
+    // 斷點，不是一具引擎。現在改成客戶端掛一段無縫循環，持續改它的 pitch 與音量
+    // （ScooterSoundInstance）。伺服器不必為此送任何封包：客戶端從車的位移就看得出來它跑多快。
+
 package com.xinbow99.taiwan.entity;
 
 import net.minecraft.core.particles.ParticleTypes;
@@ -6,7 +12,6 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -44,7 +49,7 @@ import java.util.UUID;
 public class Scooter extends VehicleEntity {
 
     /** 最高速（格/tick）。0.42 約等於玩家衝刺的 1.5 倍。 */
-    private static final float MAX_SPEED = 0.42f;
+    public static final float MAX_SPEED = 0.42f;
     /** 倒車最高速。倒車要慢，不然玩家會用倒車當第二個前進檔。 */
     private static final float MAX_REVERSE = 0.12f;
     /** 油門。加速要快——「加速快」是機車相對於汽車的賣點。 */
@@ -299,31 +304,13 @@ public class Scooter extends VehicleEntity {
     }
 
     /**
-     * 引擎聲。
+     * 引擎聲不在這裡。
      *
-     * <h3>怠速也要有聲音</h3>
-     * <p>只在移動時出聲的話，停紅燈那一刻車會變成一塊完全安靜的鐵，玩家會以為熄火了。
-     * 只要有人騎著就一直有聲音，停著時低沉而慢。
-     *
-     * <h3>轉速要靠「間隔」，不能只調音高</h3>
-     * <p>只把音高拉上去，高速聽起來只是同一個聲音變尖。**同時把兩次之間的間隔縮短**，
-     * 「噠噠噠」才會跟著變密——那才聽得出來是轉速上去了。
-     *
-     * <p>熄火時完全不出聲。那一秒的安靜就是「你把車騎進水裡了」的回饋。
+     * <p>原本是每幾 tick 播一次原版礦車聲，用間隔的疏密假裝轉速——聽起來是「噠、噠、噠」，
+     * 是一串斷點而不是一具引擎。現在改成客戶端掛一段無縫循環，持續改它的 pitch 與音量：
+     * 見 {@code ScooterSoundInstance}。伺服器不需要為此送任何封包，客戶端從車的位移
+     * 就看得出來它跑多快。
      */
-    @Override
-    public void baseTick() {
-        super.baseTick();
-        if (this.level().isClientSide() || stalled()) return;
-        if (this.getControllingPassenger() == null) return;
-
-        float pace = Math.min(Math.abs(this.speed) / MAX_SPEED, 1f);
-        int gap = Math.max(2, Math.round(9f - pace * 7f));
-        if (this.tickCount % gap != 0) return;
-
-        this.level().playSound(null, this, SoundEvents.MINECART_INSIDE, SoundSource.NEUTRAL,
-                0.18f + pace * 0.45f, 0.62f + pace * 1.5f);
-    }
 
     // ------------------------------------------------------------------ 存檔
 

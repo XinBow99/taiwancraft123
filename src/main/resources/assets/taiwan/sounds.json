@@ -1,0 +1,16 @@
+{
+  "scooter_engine": {
+    "category": "neutral",
+    "subtitle": "subtitles.taiwan.scooter_engine",
+    "sounds": [
+      { "name": "taiwan:scooter_engine", "stream": false }
+    ]
+  },
+  "scooter_start": {
+    "category": "neutral",
+    "subtitle": "subtitles.taiwan.scooter_start",
+    "sounds": [
+      { "name": "taiwan:scooter_start" }
+    ]
+  }
+}

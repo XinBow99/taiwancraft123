@@ -46,6 +46,7 @@ public class Taiwan implements ModInitializer {
 				TaiwanBiomeSource.CODEC);
 
 		TaiwanEntities.register();
+		TaiwanSounds.register();
 		TaiwanItems.register();
 
 		// 伺服器一起來就把生態系來源綁好。
