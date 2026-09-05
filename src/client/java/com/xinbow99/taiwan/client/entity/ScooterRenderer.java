@@ -63,8 +63,16 @@ public class ScooterRenderer extends EntityRenderer<Scooter, ScooterRenderState>
         if (state.lean != 0f) pose.mulPose(Axis.ZP.rotationDegrees(state.lean));
 
         this.model.setupAnim(state);
+        // 最後那個 int 是**外框顏色**，不是模型顏色。
+        //
+        // 這裡本來寫死 -1（＝0xFFFFFFFF，不透明白色），於是每一台機車都被畫上一圈白色描邊，
+        // 而描邊是那種會穿過牆壁畫在最上層的東西——整座城的機車在山的另一頭都看得到。
+        // 會踩到是因為這個多載的參數表是 (貼圖, 亮度, overlay, 外框, 剝落貼圖)，
+        // 中間沒有「顏色」那一格；-1 在別的算繪 API 裡通常代表「不染色」，抄過來就中了。
+        // 用 state.outlineColor：平常是 0（不畫），實體真的在發光時才是隊伍顏色
         collector.submitModel(this.model, state, pose, TEXTURE, state.lightCoords,
-                net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, -1, null);
+                net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
+                state.outlineColor, null);
         pose.popPose();
 
         super.submit(state, pose, collector, camera);

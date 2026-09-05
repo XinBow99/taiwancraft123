@@ -383,7 +383,21 @@ public class Scooter extends VehicleEntity {
         // 車越像在冰上。SIDE_KEEP_* 是「留下來的比例」，不是抓地力本身
         double lateral = this.planar.dot(side)
                 * (this.drifting ? SIDE_KEEP_DRIFT : SIDE_KEEP_GRIP);
-        this.planar = forward.scale(this.speed).add(side.scale(lateral));
+
+        // 轉向的支點在**後輪**，不在車身中心。
+        //
+        // 船是繞著自己的中心轉的，兩頭一起甩；兩輪車不是——後輪咬著地面往前滾，
+        // 是前輪被龍頭帶著掃出去。所以在實體中心（＝後輪往前半個軸距）上，
+        // 除了往前的速度之外還有一個側向分量：
+        //
+        //     d(中心)/dt = v × 車頭方向 + (軸距÷2) × 角速度 × 側向
+        //
+        // 這一項就是「牽車時前輪掃出去」的那個動作。少了它，車頭與車尾會一起平移，
+        // 看起來就是一艘在陸地上轉彎的船
+        // 用實際轉過的角度而不是 angularVel：甩尾時車身多轉了，前輪也就掃得更開
+        double frontSwing = Math.toRadians(yawDelta) * (WHEELBASE / 2.0);
+
+        this.planar = forward.scale(this.speed).add(side.scale(lateral + frontSwing));
 
         // ---- 6. 重力與位移 -------------------------------------------------------
         Vec3 was = this.position();

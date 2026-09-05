@@ -185,8 +185,9 @@ public class ScooterModel extends EntityModel<ScooterRenderState> {
     @Override
     public void setupAnim(ScooterRenderState state) {
         super.setupAnim(state);
-        // 龍頭跟著轉向。夾在 ±30 度：真的機車龍頭轉不到 90 度，轉滿會看起來像壞掉
-        this.steer.yRot = Mth.clamp(state.steer, -30f, 30f) * Mth.DEG_TO_RAD;
+        // 龍頭跟著轉向。夾在 ±45 度，跟實體的滿舵一致——夾在 ±30 的話，低速打死方向時
+        // 車已經在繞小圈了，畫面上的龍頭卻停在 30 度不動，看起來像是車自己在轉
+        this.steer.yRot = Mth.clamp(state.steer, -45f, 45f) * Mth.DEG_TO_RAD;
         // 輪子跟著速度滾。不轉的輪子會讓整台車看起來是被拖著走的
         this.wheelFront.xRot = state.wheelSpin;
         this.wheelRear.xRot = state.wheelSpin;
