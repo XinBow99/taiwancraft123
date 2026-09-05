@@ -87,7 +87,11 @@ function quads() {
 const CELL = 340, COLS = 4, ROWS = 3;
 const W = CELL * COLS, H = CELL * ROWS;
 const buf = new Uint8Array(W * H * 3);
-const BG = [26, 29, 35], GRID = [42, 47, 55];
+// 背景可以換：深色車殼在深色背景上根本看不出輪廓（勁戰是黑的，判讀時要白底）。
+//   BG=light node tools/render.mjs cygnus out.png
+const LIGHT = process.env.BG === 'light';
+const BG = LIGHT ? [242, 243, 245] : [26, 29, 35];
+const GRID = LIGHT ? [214, 217, 222] : [42, 47, 55];
 for (let i = 0; i < W * H; i++) { buf[i*3] = BG[0]; buf[i*3+1] = BG[1]; buf[i*3+2] = BG[2]; }
 
 function px(x, y, rgb) {
