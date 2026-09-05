@@ -31,7 +31,7 @@ import net.minecraft.util.Mth;
  * <p>同理，暗色的那一格色票（{@link #DARK}）在這張貼圖裡是真的暗（#3b4248），
  * 不是通用款那種深灰——不然大燈、飾板、後照鏡在白車殼上全部看不見。
  */
-public class CygnusModel extends EntityModel<ScooterRenderState> {
+public class CygnusModel extends EntityModel<VehicleRenderState> {
 
     // 三十二塊色票的左上角（32×32 一格，8×4 排在 **256×256** 上）。
     //
@@ -1863,7 +1863,7 @@ public class CygnusModel extends EntityModel<ScooterRenderState> {
     }
 
     @Override
-    public void setupAnim(ScooterRenderState state) {
+    public void setupAnim(VehicleRenderState state) {
         super.setupAnim(state);
         this.steer.yRot = Mth.clamp(state.steer, -45f, 45f) * Mth.DEG_TO_RAD;
         this.wheelFront.xRot = state.wheelSpin;

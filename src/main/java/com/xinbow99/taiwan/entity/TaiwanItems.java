@@ -32,6 +32,23 @@ public final class TaiwanItems {
                     .spawnEgg(TaiwanEntities.MACAQUE)
                     .setId(MACAQUE_SPAWN_EGG_KEY)));
 
+    public static final ResourceKey<Item> LANBAO_KEY =
+            ResourceKey.create(Registries.ITEM, Taiwan.id("lanbao"));
+    public static final ResourceKey<Item> MASHALA_KEY =
+            ResourceKey.create(Registries.ITEM, Taiwan.id("mashala"));
+
+    /** 藍爆堅尼。名字的由來見 {@link VehicleModel#LANBAO}。 */
+    public static final Item LANBAO = Registry.register(
+            BuiltInRegistries.ITEM, LANBAO_KEY,
+            new VehicleItem(VehicleModel.LANBAO,
+                    new Item.Properties().stacksTo(1).setId(LANBAO_KEY)));
+
+    /** 馬莎拉蹄。 */
+    public static final Item MASHALA = Registry.register(
+            BuiltInRegistries.ITEM, MASHALA_KEY,
+            new VehicleItem(VehicleModel.MASHALA,
+                    new Item.Properties().stacksTo(1).setId(MASHALA_KEY)));
+
     private TaiwanItems() {
     }
 
@@ -47,17 +64,17 @@ public final class TaiwanItems {
     public static final Item SCOOTER = Registry.register(
             BuiltInRegistries.ITEM,
             SCOOTER_KEY,
-            new ScooterItem(ScooterVariant.CLASSIC,
+            new VehicleItem(VehicleModel.CLASSIC,
                     new Item.Properties().stacksTo(1).setId(SCOOTER_KEY)));
 
     public static final ResourceKey<Item> CYGNUS_KEY =
             ResourceKey.create(Registries.ITEM, Taiwan.id("cygnus"));
 
-    /** 勁戰四代 125。跟上面那台是同一個實體種類，差別只在 {@link ScooterVariant}。 */
+    /** 勁戰四代 125。跟上面那台是同一個實體種類，差別只在 {@link VehicleModel}。 */
     public static final Item CYGNUS = Registry.register(
             BuiltInRegistries.ITEM,
             CYGNUS_KEY,
-            new ScooterItem(ScooterVariant.CYGNUS,
+            new VehicleItem(VehicleModel.CYGNUS,
                     new Item.Properties().stacksTo(1).setId(CYGNUS_KEY)));
 
     /**

@@ -40,7 +40,7 @@ import java.util.UUID;
  * <p>第一個騎上去的人成為車主，之後只有車主騎得動。**沒有鑰匙物品**：鑰匙會變成一個
  * 要管理的欄位、會掉、會被偷，而這裡要的只是「別人不能騎走我的車」。
  */
-public class Scooter extends VehicleEntity {
+public class RoadVehicle extends VehicleEntity {
 
     /**
      * 格/tick 換算成 km/h 的係數。
@@ -49,56 +49,16 @@ public class Scooter extends VehicleEntity {
      * 內部的物理一律用格/tick（那是 {@code move()} 吃的單位），只有儀表板用 km/h。
      */
     public static final float KMH_PER_BLOCK_TICK = 72f;
-    /** 最高速（km/h）。儀表板的滿刻度就是這個數字。 */
-    public static final float MAX_SPEED_KMH = 120f;
-    /** 最高速（格/tick）。120 km/h ≒ 1.67 格/tick，約是玩家衝刺的 6 倍。 */
-    public static final float MAX_SPEED = MAX_SPEED_KMH / KMH_PER_BLOCK_TICK;
     /** 倒車最高速（≒ 35 km/h）。倒車要慢，不然玩家會用倒車當第二個前進檔。 */
     private static final float MAX_REVERSE = 0.48f;
-    /**
-     * 0 加速到 100 km/h 要幾秒。**調加速就調這個數字**，不要直接改 {@link #THROTTLE}。
-     *
-     * <p>油門那一段沒有空氣阻力，加速度是定值，所以這兩個是可以互相換算的；用「幾秒破百」
-     * 當旋鈕是因為那是你講得出來、也感覺得到的量，而 0.0139 格/tick² 不是。
-     */
-    private static final float ZERO_TO_HUNDRED_SEC = 5f;
-    /**
-     * 油門（格/tick²）。由 {@link #ZERO_TO_HUNDRED_SEC} 推出來：
-     * {@code (100 km/h 換成格/tick) ÷ (秒數 × 20 tick)}。
-     *
-     * <p>0.0139 ＝ 破百 100 tick、全速（120）150 tick（7.5 秒）。
-     */
-    private static final float THROTTLE =
-            (100f / KMH_PER_BLOCK_TICK) / (ZERO_TO_HUNDRED_SEC * 20f);
     /** 煞車。比油門強，煞得住才敢騎快——全速煞停約 19 tick（不到一秒）。 */
     private static final float BRAKE = 0.09f;
     /** 沒有人騎的時候的摩擦。夠重，所以停好就不會漂。 */
     private static final float IDLE_FRICTION = 0.72f;
     /** 有人騎但沒給油的滑行摩擦。 */
     private static final float COAST_FRICTION = 0.955f;
-    /**
-     * 慢速時龍頭能打到幾度。
-     *
-     * <p>45 度 → 最小迴轉半徑 1.5 格，停車場裡原地繞圈那種。調小（例如 30 度）半徑會拉到
-     * 2.6 格，牽車入位會開始需要來回喬；調大到 60 度以上半徑剩 0.9 格，車會像在轉陀螺。
-     */
-    private static final float STEER_LOCK_SLOW = 45f;
-    /**
-     * 全速時龍頭只能打到幾度。
-     *
-     * <p>不是為了限制玩家，是真的騎車就這樣：速度越快龍頭動得越少，高速全打死等於摔車。
-     *
-     * <p>不過在 120 km/h 這個新的最高速下，決定彎有多大的其實不是這個角度而是輪胎的
-     * 抓地力上限：8 度算出來的幾何半徑是 10.7 格，但那需要 0.26 格/tick² 的向心加速度，
-     * 超過 {@link #GRIP_FRONT} + {@link #GRIP_REAR} 的 0.14，所以輪胎會先飽和、車往外推，
-     * 實際半徑落在 20 格。也就是說全速過彎現在是**轉向不足**在決定的——這是對的，
-     * 真的騎快車就是這樣，要過彎得先減速。
-     */
-    private static final float STEER_LOCK_FAST = 8f;
     /** 把手轉動的跟隨速度。0.25 ≒ 三格內轉到位；放開方向鍵時目標是 0，所以同一條式子也負責回正。 */
     private static final float STEER_LERP = 0.25f;
-    /** 過彎時車身最多傾幾度。純視覺。 */
-    private static final float MAX_LEAN = 22f;
     /** 撞牆超過這個速度就損壞。 */
     private static final float CRASH_SPEED = 1.0f;
 
@@ -127,21 +87,6 @@ public class Scooter extends VehicleEntity {
     private static final double CORNER_STIFF_FRONT = 0.43;
     /** 同上，後輪。必須大於前輪，見 {@link #CORNER_STIFF_FRONT}。 */
     private static final double CORNER_STIFF_REAR = 0.50;
-    /**
-     * 前輪抓地力上限（格/tick²）。輪胎能產生的側向力有天花板，超過就是打滑。
-     *
-     * <p><b>抓地力必須跟著最高速的平方走。</b>過彎需要的向心加速度是 {@code v² ÷ 半徑}，
-     * 所以最高速從 30 km/h 拉到 120 km/h（4 倍）之後，同一個彎需要的力是 16 倍。沿用舊值
-     * 的話全速過彎半徑會變成 100 格以上——在巷子裡等於不能轉。
-     *
-     * <p>0.065 + 0.075 ＝ 0.14 格/tick²，全速（1.67 格/tick）的最小過彎半徑
-     * {@code v² ÷ a} ≒ 20 格；60 km/h 時縮到 5 格。換算成 G 值是超現實的，但 120 km/h
-     * 要在 Minecraft 的街道裡轉得過來，就只能這樣——真實的機車在 120 km/h 的最小半徑
-     * 是 120 公尺，那是一整個區塊。
-     */
-    private static final double GRIP_FRONT = 0.065;
-    /** 後輪抓地力上限。 */
-    private static final double GRIP_REAR = 0.075;
     /** 手煞車時後輪剩下幾成抓地力。鎖死的輪子側向力幾乎歸零，車尾於是滑出去——甩尾就是這樣來的。 */
     private static final double DRIFT_REAR_GRIP = 0.4;
     /**
@@ -182,16 +127,16 @@ public class Scooter extends VehicleEntity {
     private UUID owner;
     /** 熄火中。同步給客戶端是為了讓引擎聲與車頭燈跟著停。 */
     private static final EntityDataAccessor<Boolean> DATA_STALLED =
-            SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.BOOLEAN);
+            SynchedEntityData.defineId(RoadVehicle.class, EntityDataSerializers.BOOLEAN);
     /** 把手角度（度）。要同步，別人才看得到你的龍頭在轉。 */
     private static final EntityDataAccessor<Float> DATA_STEER =
-            SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.FLOAT);
+            SynchedEntityData.defineId(RoadVehicle.class, EntityDataSerializers.FLOAT);
     /** 車款。要同步：算繪端靠它挑模型與貼圖。 */
     private static final EntityDataAccessor<Integer> DATA_VARIANT =
-            SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.INT);
+            SynchedEntityData.defineId(RoadVehicle.class, EntityDataSerializers.INT);
     /** 壓車角度（度）。同上，純視覺。 */
     private static final EntityDataAccessor<Float> DATA_LEAN =
-            SynchedEntityData.defineId(Scooter.class, EntityDataSerializers.FLOAT);
+            SynchedEntityData.defineId(RoadVehicle.class, EntityDataSerializers.FLOAT);
 
     // 狀態分三層，不要混在一起。
 
@@ -242,7 +187,7 @@ public class Scooter extends VehicleEntity {
     private int boostTicks;
     private boolean drifting;
 
-    public Scooter(EntityType<? extends Scooter> type, Level level) {
+    public RoadVehicle(EntityType<? extends RoadVehicle> type, Level level) {
         super(type, level);
         this.blocksBuilding = true;
     }
@@ -253,7 +198,7 @@ public class Scooter extends VehicleEntity {
         builder.define(DATA_STALLED, false);
         builder.define(DATA_STEER, 0f);
         builder.define(DATA_LEAN, 0f);
-        builder.define(DATA_VARIANT, ScooterVariant.CLASSIC.ordinal());
+        builder.define(DATA_VARIANT, VehicleModel.CLASSIC.ordinal());
     }
 
     // ------------------------------------------------------------------ 車主
@@ -281,12 +226,12 @@ public class Scooter extends VehicleEntity {
         return this.isLocalInstanceAuthoritative() ? this.leanAngle : this.entityData.get(DATA_LEAN);
     }
 
-    /** 車款。外觀由它決定，物理目前完全共用——見 {@link ScooterVariant}。 */
-    public ScooterVariant variant() {
-        return ScooterVariant.byId(this.entityData.get(DATA_VARIANT));
+    /** 車款。外觀由它決定，物理目前完全共用——見 {@link VehicleModel}。 */
+    public VehicleModel variant() {
+        return VehicleModel.byId(this.entityData.get(DATA_VARIANT));
     }
 
-    public void setVariant(ScooterVariant variant) {
+    public void setVariant(VehicleModel variant) {
         this.entityData.set(DATA_VARIANT, variant.ordinal());
         refreshDimensions();
     }
@@ -365,7 +310,7 @@ public class Scooter extends VehicleEntity {
      * 共用一組的話，人不是浮在坐墊上方就是半個屁股陷進車裡。
      *
      * <p>之前的 z 幾乎是 0（車身中心），但坐墊在模型的 +Z 側——所以騎士其實是坐在
-     * 踏板前緣、不是坐墊上。數字現在從 {@link ScooterVariant#seat} 來，跟模型對齊。
+     * 踏板前緣、不是坐墊上。數字現在從 {@link VehicleModel#seat} 來，跟模型對齊。
      *
      * <p>坐姿本身不用管：{@code HumanoidRenderState.isPassenger} 只要是乘客就會是坐姿，
      * 原版自己處理。這裡只負責「坐在哪」。
@@ -512,8 +457,8 @@ public class Scooter extends VehicleEntity {
         if (this.boostTicks > 0) this.boostTicks--;
 
         // 速度越快，龍頭能打的角度越小。真的騎車就是這樣，高速全打死等於摔車
-        float pace = (float) Math.min(Math.abs(this.speed) / MAX_SPEED, 1.0);
-        float lock = Mth.lerp(pace, STEER_LOCK_SLOW, STEER_LOCK_FAST);
+        float pace = (float) Math.min(Math.abs(this.speed) / variant().maxSpeed(), 1.0);
+        float lock = Mth.lerp(pace, variant().steerLockSlow(), variant().steerLockFast());
         this.steerAngle = Mth.lerp(STEER_LERP, this.steerAngle, steerInput * lock);
         if (!this.level().isClientSide()) {
             this.entityData.set(DATA_STEER, this.steerAngle);
@@ -551,7 +496,7 @@ public class Scooter extends VehicleEntity {
         // 所以打滑的時候（角速度跟不上龍頭）車不會傻傻地繼續壓，看起來才對
         double latAccel = this.speed * this.yawRate;
         float targetLean = (float) -Mth.clamp(
-                Math.toDegrees(Math.atan(latAccel / LEAN_G)), -MAX_LEAN, MAX_LEAN);
+                Math.toDegrees(Math.atan(latAccel / LEAN_G)), -variant().maxLean(), variant().maxLean());
         this.leanAngle = Mth.lerp(0.25f, this.leanAngle, targetLean);
         if (!this.level().isClientSide()) {
             this.entityData.set(DATA_LEAN, this.leanAngle);
@@ -581,8 +526,8 @@ public class Scooter extends VehicleEntity {
 
         // 輪胎：側向力與側滑角成正比，直到抓地力上限為止（飽和＝打滑）。
         // 手煞車把後輪鎖死，它的上限崩掉，車尾就滑出去了——甩尾不再需要特例的加成倍率
-        double gripRear = this.drifting ? GRIP_REAR * DRIFT_REAR_GRIP : GRIP_REAR;
-        double forceFront = tyre(slipFront, CORNER_STIFF_FRONT, GRIP_FRONT);
+        double gripRear = this.drifting ? variant().gripRear() * DRIFT_REAR_GRIP : variant().gripRear();
+        double forceFront = tyre(slipFront, CORNER_STIFF_FRONT, variant().gripFront());
         double forceRear = tyre(slipRear, CORNER_STIFF_REAR, gripRear);
         // 低速淡出。
         //
@@ -668,17 +613,17 @@ public class Scooter extends VehicleEntity {
             return this.speed * ((wet ? 0.5 : IDLE_FRICTION) - 1.0);
         }
 
-        double cap = this.boostTicks > 0 ? MAX_SPEED * BOOST_OVERSPEED : MAX_SPEED;
+        double cap = this.boostTicks > 0 ? variant().maxSpeed() * BOOST_OVERSPEED : variant().maxSpeed();
         if (this.throttle > 0.01f) {
             // 到頂之後不要硬切速度，讓它自己收回來——硬切會在最高速附近抖
             if (this.speed >= cap) return (cap - this.speed) * 0.03;
-            return THROTTLE * (this.boostTicks > 0 ? 1.8 : 1.0);
+            return variant().throttle() * (this.boostTicks > 0 ? 1.8 : 1.0);
         }
         if (this.throttle < -0.01f) {
             // 同一個鍵：還在前進就是煞車，停住之後才變倒車。
             // 甩尾中只給三成煞車：甩尾要保住速度，不然過彎永遠比直直騎慢
             if (this.speed > 0.01) return this.drifting ? -BRAKE * 0.3 : -BRAKE;
-            return this.speed > -MAX_REVERSE ? -THROTTLE * 0.6 : 0.0;
+            return this.speed > -MAX_REVERSE ? -variant().throttle() * 0.6 : 0.0;
         }
         return this.speed * (COAST_FRICTION - 1.0);
     }
@@ -740,7 +685,7 @@ public class Scooter extends VehicleEntity {
         } else if (this.driftTicks > 0) {
             if (this.driftTicks >= DRIFT_CHARGE) {
                 this.boostTicks = BOOST_TICKS;
-                this.speed = Math.min(this.speed + 0.24, MAX_SPEED * BOOST_OVERSPEED);
+                this.speed = Math.min(this.speed + 0.24, variant().maxSpeed() * BOOST_OVERSPEED);
                 if (this.level() instanceof ServerLevel server) {
                     server.sendParticles(ParticleTypes.CLOUD, this.getX(), this.getY() + 0.3,
                             this.getZ(), 8, 0.2, 0.1, 0.2, 0.02);
@@ -818,7 +763,12 @@ public class Scooter extends VehicleEntity {
     @Override
     protected Item getDropItem() {
         // 掉回自己那一款，不是一律掉通用款——不然把勁戰打壞會換到一台別的車
-        return variant() == ScooterVariant.CYGNUS ? TaiwanItems.CYGNUS : TaiwanItems.SCOOTER;
+        return switch (variant()) {
+            case CYGNUS -> TaiwanItems.CYGNUS;
+            case LANBAO -> TaiwanItems.LANBAO;
+            case MASHALA -> TaiwanItems.MASHALA;
+            default -> TaiwanItems.SCOOTER;
+        };
     }
 
     @Override
@@ -829,7 +779,7 @@ public class Scooter extends VehicleEntity {
     //
     // 原本是每幾 tick 播一次原版礦車聲，用間隔的疏密假裝轉速——那聽起來是「噠、噠、噠」的
     // 斷點，不是一具引擎。現在改成客戶端掛一段無縫循環，持續改它的 pitch 與音量
-    //（ScooterSoundInstance）。伺服器不必為此送任何封包：客戶端從車的位移就看得出來它跑多快。
+    //（VehicleSoundInstance）。伺服器不必為此送任何封包：客戶端從車的位移就看得出來它跑多快。
 
     // ------------------------------------------------------------------ 存檔
 
@@ -838,7 +788,7 @@ public class Scooter extends VehicleEntity {
         this.owner = input.read("owner", net.minecraft.core.UUIDUtil.CODEC).orElse(null);
         this.speed = input.getFloatOr("speed", 0f);
         // 舊存檔沒有這個欄位，讀不到就是通用款——這正是 byName 不丟例外的理由
-        setVariant(ScooterVariant.byName(input.getStringOr("variant", "")));
+        setVariant(VehicleModel.byName(input.getStringOr("variant", "")));
     }
 
     @Override

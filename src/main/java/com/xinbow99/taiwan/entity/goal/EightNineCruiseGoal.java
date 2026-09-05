@@ -1,7 +1,7 @@
 package com.xinbow99.taiwan.entity.goal;
 
 import com.xinbow99.taiwan.entity.EightNine;
-import com.xinbow99.taiwan.entity.Scooter;
+import com.xinbow99.taiwan.entity.RoadVehicle;
 import com.xinbow99.taiwan.worldgen.Palette;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
@@ -66,7 +66,7 @@ public class EightNineCruiseGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        return self.getVehicle() instanceof Scooter;
+        return self.getVehicle() instanceof RoadVehicle;
     }
 
     @Override
@@ -85,12 +85,12 @@ public class EightNineCruiseGoal extends Goal {
 
     @Override
     public void stop() {
-        if (self.getVehicle() instanceof Scooter scooter) scooter.setAiInput(0f, 0f);
+        if (self.getVehicle() instanceof RoadVehicle scooter) scooter.setAiInput(0f, 0f);
     }
 
     @Override
     public void tick() {
-        if (!(self.getVehicle() instanceof Scooter scooter)) return;
+        if (!(self.getVehicle() instanceof RoadVehicle scooter)) return;
 
         // 卡住就下車。空催油門只會把車卡得更深
         double moved = Math.hypot(self.getX() - lastX, self.getZ() - lastZ);
@@ -128,7 +128,7 @@ public class EightNineCruiseGoal extends Goal {
      * 路口才會因為加分而選擇轉向頭的那一邊——**路的形狀是主，跟車是次**。
      * 反過來的話就會為了追上頭而切過人家的客廳。
      */
-    private float pickHeading(Scooter scooter) {
+    private float pickHeading(RoadVehicle scooter) {
         EightNine leader = packLeader();
         Double toLeader = null;
         if (leader != null && leader != self) {
@@ -165,7 +165,7 @@ public class EightNineCruiseGoal extends Goal {
      *
      * <p>垂直方向容忍 ±1 格：街道會有高低差，只看正下方一格的話，一個路緣就會被判成沒路。
      */
-    private double roadRun(Scooter scooter, float yaw) {
+    private double roadRun(RoadVehicle scooter, float yaw) {
         Level level = scooter.level();
         double rad = yaw * Mth.DEG_TO_RAD;
         double dx = -Math.sin(rad);
@@ -192,7 +192,7 @@ public class EightNineCruiseGoal extends Goal {
         EightNine best = null;
         for (EightNine other : self.level().getEntitiesOfClass(EightNine.class,
                 self.getBoundingBox().inflate(PACK),
-                candidate -> candidate.isAlive() && candidate.getVehicle() instanceof Scooter)) {
+                candidate -> candidate.isAlive() && candidate.getVehicle() instanceof RoadVehicle)) {
             if (best == null || other.getId() < best.getId()) best = other;
         }
         return best;

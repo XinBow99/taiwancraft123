@@ -6,6 +6,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
@@ -18,12 +19,12 @@ import net.minecraft.world.level.Level;
  * 原版的船是丟在水面上，但機車要停在地上，所以用 {@link UseOnContext} 而不是
  * {@code use()} 的射線。
  */
-public class ScooterItem extends Item {
+public class VehicleItem extends Item {
 
     /** 這個物品放出來的是哪一款車。物品與車款是一對一的，所以存成 final 欄位就夠了。 */
-    private final ScooterVariant variant;
+    private final VehicleModel variant;
 
-    public ScooterItem(ScooterVariant variant, Properties properties) {
+    public VehicleItem(VehicleModel variant, Properties properties) {
         super(properties);
         this.variant = variant;
     }
@@ -35,7 +36,11 @@ public class ScooterItem extends Item {
 
         if (!(level instanceof ServerLevel server)) return InteractionResult.SUCCESS;
 
-        Scooter scooter = TaiwanEntities.SCOOTER.create(server, EntitySpawnReason.SPAWN_ITEM_USE);
+        // entity type 跟著車款走：跑車的碰撞箱是機車的兩倍寬，共用一個 type 不是這裡窄
+        // 就是那裡卡（見 TaiwanEntities.CAR）
+        EntityType<RoadVehicle> type = this.variant.kind() == VehicleModel.Kind.CAR
+                ? TaiwanEntities.CAR : TaiwanEntities.SCOOTER;
+        RoadVehicle scooter = type.create(server, EntitySpawnReason.SPAWN_ITEM_USE);
         if (scooter == null) return InteractionResult.FAIL;
         scooter.setVariant(this.variant);
 

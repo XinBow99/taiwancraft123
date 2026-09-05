@@ -39,6 +39,9 @@ public final class TaiwanEntities {
     public static final ResourceKey<EntityType<?>> EIGHTNINE_KEY =
             ResourceKey.create(Registries.ENTITY_TYPE, Taiwan.id("eightnine"));
 
+    public static final ResourceKey<EntityType<?>> CAR_KEY =
+            ResourceKey.create(Registries.ENTITY_TYPE, Taiwan.id("car"));
+
     public static final ResourceKey<EntityType<?>> SCOOTER_KEY =
             ResourceKey.create(Registries.ENTITY_TYPE, Taiwan.id("scooter"));
 
@@ -75,13 +78,30 @@ public final class TaiwanEntities {
      * 而「鑽得過去」是機車相對於汽車的核心賣點，也是規格書明寫的要求。
      * 後照鏡在模型上超出這個寬度是刻意的，跟船槳一樣只是視覺。
      */
-    public static final EntityType<Scooter> SCOOTER = Registry.register(
+    public static final EntityType<RoadVehicle> SCOOTER = Registry.register(
             BuiltInRegistries.ENTITY_TYPE,
             SCOOTER_KEY,
-            EntityType.Builder.<Scooter>of(Scooter::new, MobCategory.MISC)
+            EntityType.Builder.<RoadVehicle>of(RoadVehicle::new, MobCategory.MISC)
                     .sized(0.8f, 1.4f)
                     .clientTrackingRange(10)
                     .build(SCOOTER_KEY));
+
+    /**
+     * 汽車。**跟機車是同一個 Java 類別**（{@link RoadVehicle}），只是不同的 entity type。
+     *
+     * <p>為什麼不共用同一個 type：碰撞箱、顯示名稱、生怪蛋都是綁在 type 上的。
+     * 一台 1.9 格寬的跑車跟一台 0.8 格寬的機車共用一個 type，不是這裡窄就是那裡卡。
+     *
+     * <p>為什麼不共用同一個類別以外的東西：物理是**同一套**——動力學自行車模型本來
+     * 就是標準的汽車模型。差別只有 {@link VehicleModel} 裡那七個調校參數。
+     */
+    public static final EntityType<RoadVehicle> CAR = Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,
+            CAR_KEY,
+            EntityType.Builder.<RoadVehicle>of(RoadVehicle::new, MobCategory.MISC)
+                    .sized(1.9f, 1.3f)
+                    .clientTrackingRange(12)
+                    .build(CAR_KEY));
 
     /**
      * 8+9（陣頭少年）。

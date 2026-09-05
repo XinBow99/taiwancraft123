@@ -21,6 +21,8 @@ import { deflateSync } from 'node:zlib';
 const LAYOUTS = {
   classic: { cols: 2, sw: 64, sh: 32, size: 128 },
   cygnus:  { cols: 8, sw: 32, sh: 32, size: 256 },
+  lanbao:  { cols: 2, sw: 64, sh: 32, size: 128 },
+  mashala: { cols: 2, sw: 64, sh: 32, size: 128 },
   // 8+9 的六型共用一個十六格版型，差別只在每一格填什麼顏色
   eightnine_temple: { cols: 4, sw: 32, sh: 32, size: 128 },
   eightnine_rider: { cols: 4, sw: 32, sh: 32, size: 128 },
@@ -31,6 +33,9 @@ const LAYOUTS = {
 };
 
 const PALETTES = {
+  // 兩款跑車。槽位順序：PAINT DARK GLASS LAMP ｜ RED TIRE RIM CHROME
+  lanbao:  ['#c8d42a', '#1b1d20', '#2a3138', '#eef2f4', '#d2342c', '#141416', '#c9ccd0', '#b0b6bc'],
+  mashala: ['#1f3f7a', '#15171a', '#28303a', '#eef2f4', '#c93028', '#141416', '#c9ccd0', '#cfd4d8'],
   // BODY DARK SEAT TIRE / CHROME LAMP AMBER BRAKE
   classic: ['#2f3237', '#212429', '#191b1e', '#121417', '#b9c0c6', '#e9e4d8', '#e08a2c', '#b4302c'],
   // 勁戰四代（紅黑）。順序＝CygnusModel 裡三十二個槽位常數的順序。

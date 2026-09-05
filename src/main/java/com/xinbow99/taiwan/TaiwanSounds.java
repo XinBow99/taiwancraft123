@@ -16,7 +16,7 @@ import net.minecraft.sounds.SoundEvent;
  * <h2>引擎聲是「一個循環 ＋ 變速」，不是一直重播短音效</h2>
  * <p>之前是每幾 tick 播一次原版的礦車聲，那聽起來是「噠、噠、噠」的斷點，不是引擎。
  * 現在是一段無縫循環（1 秒 ＝ 50 次點火），由客戶端一直改它的 pitch 來表示轉速——
- * 見 {@code ScooterSoundInstance}。
+ * 見 {@code VehicleSoundInstance}。
  *
  * <h2>SOUND_EVENT 是同步的 registry</h2>
  * <p>加東西進去會改變 id 對照表，沒裝模組的客戶端就連不進來。不過載具（ENTITY_TYPE）

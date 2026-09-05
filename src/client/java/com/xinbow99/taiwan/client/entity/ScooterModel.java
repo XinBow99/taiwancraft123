@@ -26,7 +26,7 @@ import net.minecraft.util.Mth;
  * <p>代價是暫時畫不出細節（車殼上的線條、輪胎的花紋）。等真的要畫貼圖時再逐件排 UV，
  * 那時候尺寸已經定案了，排一次就不用再動。
  */
-public class ScooterModel extends EntityModel<ScooterRenderState> {
+public class ScooterModel extends EntityModel<VehicleRenderState> {
 
     // 八塊色票的左上角。與 texture 產生器裡的配置一一對應
     private static final int BODY = 0,    BODY_V = 0;
@@ -183,7 +183,7 @@ public class ScooterModel extends EntityModel<ScooterRenderState> {
     }
 
     @Override
-    public void setupAnim(ScooterRenderState state) {
+    public void setupAnim(VehicleRenderState state) {
         super.setupAnim(state);
         // 龍頭跟著轉向。夾在 ±45 度，跟實體的滿舵一致——夾在 ±30 的話，低速打死方向時
         // 車已經在繞小圈了，畫面上的龍頭卻停在 30 度不動，看起來像是車自己在轉

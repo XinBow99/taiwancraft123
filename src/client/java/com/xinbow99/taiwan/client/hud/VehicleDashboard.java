@@ -1,6 +1,6 @@
 package com.xinbow99.taiwan.client.hud;
 
-import com.xinbow99.taiwan.entity.Scooter;
+import com.xinbow99.taiwan.entity.RoadVehicle;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -25,7 +25,7 @@ import org.joml.Matrix3x2fStack;
  * <p>一幀大約 150 個 {@code fill}。聽起來多，但它們全部進同一批 GUI 頂點緩衝，
  * 比多載一張貼圖便宜，而且改半徑、改角度不用重畫圖。
  */
-public class ScooterDashboard implements HudElement {
+public class VehicleDashboard implements HudElement {
 
     /** 錶面半徑（像素）。 */
     private static final int RADIUS = 46;
@@ -53,7 +53,10 @@ public class ScooterDashboard implements HudElement {
     /** 每幾 km/h 一個標數字的大刻度。 */
     private static final int MAJOR_STEP = 20;
     /** 超過幾 km/h 算紅線區。 */
-    private static final float REDLINE = Scooter.MAX_SPEED_KMH * 0.8f;
+    /** 紅線區從滿刻度的幾成開始。滿刻度是跟著車款走的，所以這裡只能是比例。 */
+    private static final float REDLINE_FRACTION = 0.8f;
+    /** 目前這台車的滿刻度（km/h）。每一幀從騎的那台抄過來——機車 120、跑車 260。 */
+    private float scale = 120f;
 
     private static final int FACE = 0xC8101418;
     private static final int RIM = 0xFF2B3A44;
@@ -82,12 +85,13 @@ public class ScooterDashboard implements HudElement {
         // F1 不用自己判斷：這一版的 Options 已經沒有 hideGui 了，隱藏 HUD 的時候整個
         // 圖層根本不會被呼叫到
         if (mc.player == null) return;
-        if (!(mc.player.getVehicle() instanceof Scooter scooter)) {
+        if (!(mc.player.getVehicle() instanceof RoadVehicle scooter)) {
             this.shown = 0f;
             return;
         }
 
-        float target = Mth.clamp(scooter.speedKmh(), 0f, Scooter.MAX_SPEED_KMH);
+        this.scale = scooter.variant().maxSpeedKmh();
+        float target = Mth.clamp(scooter.speedKmh(), 0f, this.scale);
         // 用畫面的時間而不是 tick：低 FPS 時阻尼才不會變成慢動作
         float follow = Mth.clamp(delta.getRealtimeDeltaTicks() * 0.35f, 0f, 1f);
         this.shown = Mth.lerp(follow, this.shown, target);
@@ -121,11 +125,11 @@ public class ScooterDashboard implements HudElement {
     }
 
     /** 刻度：每 10 km/h 一根短的，每 20 km/h 一根長的並標上數字。紅線區的刻度變紅。 */
-    private static void ticks(GuiGraphicsExtractor gui, int cx, int cy) {
+    private void ticks(GuiGraphicsExtractor gui, int cx, int cy) {
         Font font = Minecraft.getInstance().font;
-        for (int kmh = 0; kmh <= (int) Scooter.MAX_SPEED_KMH; kmh += MINOR_STEP) {
+        for (int kmh = 0; kmh <= (int) scale; kmh += MINOR_STEP) {
             boolean major = kmh % MAJOR_STEP == 0;
-            int colour = kmh >= REDLINE ? TICK_RED : (major ? TICK_MAJOR : TICK);
+            int colour = kmh >= scale * REDLINE_FRACTION ? TICK_RED : (major ? TICK_MAJOR : TICK);
             int length = major ? 8 : 4;
             int width = major ? 2 : 1;
 
@@ -139,20 +143,20 @@ public class ScooterDashboard implements HudElement {
                 int ty = cy - (int) Math.round(Math.cos(rad) * (RADIUS - 20));
                 String label = Integer.toString(kmh);
                 gui.text(font, label, tx - font.width(label) / 2, ty - 4,
-                        kmh >= REDLINE ? TICK_RED : TEXT_DIM);
+                        kmh >= scale * REDLINE_FRACTION ? TICK_RED : TEXT_DIM);
             }
         }
     }
 
     /** 指針，加上中央的軸心蓋住根部。 */
-    private static void needle(GuiGraphicsExtractor gui, int cx, int cy, float kmh) {
+    private void needle(GuiGraphicsExtractor gui, int cx, int cy, float kmh) {
         bar(gui, cx, cy, angleOf(kmh), 6, RADIUS - 14, 2, NEEDLE);
         disc(gui, cx, cy, 4, HUB);
         disc(gui, cx, cy, 2, NEEDLE);
     }
 
     /** 中央的數字與單位；熄火時整個換成提示。 */
-    private static void readout(GuiGraphicsExtractor gui, Font font, int cx, int cy, Scooter scooter) {
+    private void readout(GuiGraphicsExtractor gui, Font font, int cx, int cy, RoadVehicle scooter) {
         if (scooter.stalled()) {
             String msg = "熄火";
             gui.text(font, msg, cx - font.width(msg) / 2, cy + RADIUS / 2 - 4, STALL);
@@ -164,8 +168,8 @@ public class ScooterDashboard implements HudElement {
     }
 
     /** 時速對應到錶面上的角度（度，從正上方順時針）。 */
-    private static float angleOf(float kmh) {
-        return START + SWEEP * Mth.clamp(kmh / Scooter.MAX_SPEED_KMH, 0f, 1f);
+    private float angleOf(float kmh) {
+        return START + SWEEP * Mth.clamp(kmh / scale, 0f, 1f);
     }
 
     /**

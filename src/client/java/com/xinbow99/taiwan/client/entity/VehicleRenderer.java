@@ -1,9 +1,9 @@
 package com.xinbow99.taiwan.client.entity;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.xinbow99.taiwan.entity.ScooterVariant;
+import com.xinbow99.taiwan.entity.VehicleModel;
 import com.xinbow99.taiwan.Taiwan;
-import com.xinbow99.taiwan.entity.Scooter;
+import com.xinbow99.taiwan.entity.RoadVehicle;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -24,10 +24,14 @@ import java.util.Map;
  * <p>模型的正面是 -Z，而實體的 yaw 0 面向 +Z，所以要轉 180 度——這跟原版的船同一個約定。
  * 少了這一下，車會倒著跑。
  */
-public class ScooterRenderer extends EntityRenderer<Scooter, ScooterRenderState> {
+public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderState> {
 
     public static final ModelLayerLocation LAYER =
             new ModelLayerLocation(Taiwan.id("scooter"), "main");
+    public static final ModelLayerLocation LANBAO_LAYER =
+            new ModelLayerLocation(Taiwan.id("lanbao"), "main");
+    public static final ModelLayerLocation MASHALA_LAYER =
+            new ModelLayerLocation(Taiwan.id("mashala"), "main");
     public static final ModelLayerLocation CYGNUS_LAYER =
             new ModelLayerLocation(Taiwan.id("cygnus"), "main");
 
@@ -38,23 +42,25 @@ public class ScooterRenderer extends EntityRenderer<Scooter, ScooterRenderState>
      * {@code submit()} 的話每一幀、每一台車都要重來一次。兩個模型的記憶體成本是常數，
      * 用一個 {@code EnumMap} 換掉 if-else 是為了以後加第三款車時不用再動這個方法。
      */
-    private final Map<ScooterVariant, EntityModel<ScooterRenderState>> models;
+    private final Map<VehicleModel, EntityModel<VehicleRenderState>> models;
 
-    public ScooterRenderer(EntityRendererProvider.Context context) {
+    public VehicleRenderer(EntityRendererProvider.Context context) {
         super(context);
-        this.models = new EnumMap<>(ScooterVariant.class);
-        this.models.put(ScooterVariant.CLASSIC, new ScooterModel(context.bakeLayer(LAYER)));
-        this.models.put(ScooterVariant.CYGNUS, new CygnusModel(context.bakeLayer(CYGNUS_LAYER)));
+        this.models = new EnumMap<>(VehicleModel.class);
+        this.models.put(VehicleModel.CLASSIC, new ScooterModel(context.bakeLayer(LAYER)));
+        this.models.put(VehicleModel.CYGNUS, new CygnusModel(context.bakeLayer(CYGNUS_LAYER)));
+        this.models.put(VehicleModel.LANBAO, new LanbaoModel(context.bakeLayer(LANBAO_LAYER)));
+        this.models.put(VehicleModel.MASHALA, new MashalaModel(context.bakeLayer(MASHALA_LAYER)));
         this.shadowRadius = 0.6f;
     }
 
     @Override
-    public ScooterRenderState createRenderState() {
-        return new ScooterRenderState();
+    public VehicleRenderState createRenderState() {
+        return new VehicleRenderState();
     }
 
     @Override
-    public void extractRenderState(Scooter entity, ScooterRenderState state, float partialTick) {
+    public void extractRenderState(RoadVehicle entity, VehicleRenderState state, float partialTick) {
         super.extractRenderState(entity, state, partialTick);
         Vec3 motion = entity.getDeltaMovement();
         float horizontal = (float) Math.sqrt(motion.x * motion.x + motion.z * motion.z);
@@ -77,7 +83,7 @@ public class ScooterRenderer extends EntityRenderer<Scooter, ScooterRenderState>
     }
 
     @Override
-    public void submit(ScooterRenderState state, PoseStack pose,
+    public void submit(VehicleRenderState state, PoseStack pose,
                        SubmitNodeCollector collector, CameraRenderState camera) {
         pose.pushPose();
         // 模型是以 y=24 為地面畫的，往上抬 1.5 格才會站在實體的腳下
@@ -99,7 +105,7 @@ public class ScooterRenderer extends EntityRenderer<Scooter, ScooterRenderState>
 
         // 模型與貼圖都由車款決定。兩者一定要一起取——拿 A 的模型配 B 的貼圖，
         // 顏色會整台錯位（色票版型雖然一樣，填的顏色不一樣）
-        EntityModel<ScooterRenderState> model = this.models.get(state.variant);
+        EntityModel<VehicleRenderState> model = this.models.get(state.variant);
         model.setupAnim(state);
         // 最後那個 int 是**外框顏色**，不是模型顏色。
         //

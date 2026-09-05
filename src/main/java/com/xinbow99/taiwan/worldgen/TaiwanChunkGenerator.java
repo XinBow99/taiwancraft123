@@ -20,7 +20,7 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import com.xinbow99.taiwan.entity.EightNine;
 import com.xinbow99.taiwan.entity.EightNineVariant;
-import com.xinbow99.taiwan.entity.Scooter;
+import com.xinbow99.taiwan.entity.RoadVehicle;
 import com.xinbow99.taiwan.entity.TaiwanEntities;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
@@ -438,7 +438,7 @@ public class TaiwanChunkGenerator extends ChunkGenerator {
                 if (Math.floorMod(Noise.hash(x, salt ^ 0x5C00, z), 8) != 0) continue;
 
                 int ground = Urban.ground(x, z, settings, salt);
-                Scooter scooter = TaiwanEntities.SCOOTER.create(
+                RoadVehicle scooter = TaiwanEntities.SCOOTER.create(
                         region.getLevel(), EntitySpawnReason.CHUNK_GENERATION);
                 if (scooter == null) continue;
 

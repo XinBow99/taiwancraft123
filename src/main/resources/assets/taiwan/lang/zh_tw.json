@@ -1,10 +1,13 @@
 {
+  "entity.taiwan.car": "汽車",
   "entity.taiwan.eightnine": "8+9",
   "entity.taiwan.macaque": "台灣獼猴",
   "entity.taiwan.scooter": "機車",
   "generator.taiwan.taiwan": "台灣",
   "item.taiwan.cygnus": "勁戰四代 125",
+  "item.taiwan.lanbao": "藍爆堅尼",
   "item.taiwan.macaque_spawn_egg": "台灣獼猴生怪蛋",
+  "item.taiwan.mashala": "馬莎拉蹄",
   "item.taiwan.scooter": "機車",
   "subtitles.taiwan.eightnine_anthem": "陣頭的歌",
   "subtitles.taiwan.eightnine_hurt": "8+9 被打",

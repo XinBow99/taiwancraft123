@@ -1,7 +1,7 @@
 package com.xinbow99.taiwan.entity.goal;
 
 import com.xinbow99.taiwan.entity.EightNine;
-import com.xinbow99.taiwan.entity.Scooter;
+import com.xinbow99.taiwan.entity.RoadVehicle;
 import com.xinbow99.taiwan.worldgen.Palette;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -12,7 +12,7 @@ import java.util.EnumSet;
  * 去牽一台車。
  *
  * <h2>只牽沒有車主的</h2>
- * <p>{@link Scooter#owner()} 是空的才碰。玩家騎過的車就有主人了——路邊那排違停是無主的，
+ * <p>{@link RoadVehicle#owner()} 是空的才碰。玩家騎過的車就有主人了——路邊那排違停是無主的，
  * 那才是他們會牽走的。少了這個判斷，你停在門口的車會被騎走，那是 bug 不是特色。
  *
  * <h2>成團才會想騎</h2>
@@ -29,7 +29,7 @@ public class EightNineRideGoal extends Goal {
     private static final int RETHINK = 60;
 
     private final EightNine self;
-    private Scooter target;
+    private RoadVehicle target;
     private int cooldown;
 
     public EightNineRideGoal(EightNine self) {
@@ -86,7 +86,7 @@ public class EightNineRideGoal extends Goal {
      * 而 {@link EightNineCruiseGoal} 是沿著鋪面探路的：起點不在路上的話，
      * 它探不到任何方向，人就會坐在車上不動，看起來像壞掉。
      */
-    private static boolean onPaving(Scooter scooter) {
+    private static boolean onPaving(RoadVehicle scooter) {
         for (int dy = 0; dy >= -2; dy--) {
             BlockPos pos = scooter.blockPosition().offset(0, dy - 1, 0);
             if (Palette.isPaving(scooter.level().getBlockState(pos))) return true;
@@ -95,10 +95,10 @@ public class EightNineRideGoal extends Goal {
     }
 
     /** 最近的一台無主、沒人騎的車。 */
-    private Scooter freeScooter() {
-        Scooter best = null;
+    private RoadVehicle freeScooter() {
+        RoadVehicle best = null;
         double bestDist = Double.MAX_VALUE;
-        for (Scooter scooter : self.level().getEntitiesOfClass(Scooter.class,
+        for (RoadVehicle scooter : self.level().getEntitiesOfClass(RoadVehicle.class,
                 self.getBoundingBox().inflate(SEARCH),
                 candidate -> candidate.isAlive()
                         && candidate.getPassengers().isEmpty()

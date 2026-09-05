@@ -1,7 +1,7 @@
 package com.xinbow99.taiwan.client.entity;
 
 import com.xinbow99.taiwan.TaiwanSounds;
-import com.xinbow99.taiwan.entity.Scooter;
+import com.xinbow99.taiwan.entity.RoadVehicle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -27,7 +27,7 @@ import net.minecraft.util.RandomSource;
  * <p>直接把當下速度換成 pitch 的話，鬆油門的瞬間音高會硬生生掉下來，像跳針。
  * 真的引擎有飛輪的慣性，所以這裡讓轉速用 lerp 追上去，升得快、降得慢。
  */
-public class ScooterSoundInstance extends AbstractTickableSoundInstance {
+public class VehicleSoundInstance extends AbstractTickableSoundInstance {
 
     /** 循環音檔錄的是每秒 50 次點火。pitch 1.0 就是那個轉速。 */
     private static final float IDLE_PITCH = 0.72f;
@@ -35,14 +35,14 @@ public class ScooterSoundInstance extends AbstractTickableSoundInstance {
     /** 發動音效的長度（tick）。這段時間裡循環聲慢慢淡進來，兩者才不會打架。 */
     private static final int WARMUP = 22;
 
-    private final Scooter scooter;
+    private final RoadVehicle scooter;
     /** 0＝怠速，1＝全速。 */
     private float rpm;
     private boolean wasRunning;
     private int warmup;
     private int age;
 
-    public ScooterSoundInstance(Scooter scooter) {
+    public VehicleSoundInstance(RoadVehicle scooter) {
         super(TaiwanSounds.SCOOTER_ENGINE, SoundSource.NEUTRAL, RandomSource.create());
         this.scooter = scooter;
         this.looping = true;
@@ -84,7 +84,7 @@ public class ScooterSoundInstance extends AbstractTickableSoundInstance {
         // 這一 tick 走了多遠。deltaMovement 在別人的車上不可靠（不一定有送），位置則一定有
         double dx = this.scooter.getX() - this.scooter.xOld;
         double dz = this.scooter.getZ() - this.scooter.zOld;
-        float pace = (float) Math.min(Math.sqrt(dx * dx + dz * dz) / Scooter.MAX_SPEED, 1.0);
+        float pace = (float) Math.min(Math.sqrt(dx * dx + dz * dz) / this.scooter.variant().maxSpeed(), 1.0);
 
         // 升得快、降得慢：引擎有飛輪，鬆油門不會瞬間回到怠速
         float target = running ? pace : 0f;

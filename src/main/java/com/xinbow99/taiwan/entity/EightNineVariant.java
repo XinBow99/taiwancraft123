@@ -36,6 +36,11 @@ public enum EightNineVariant implements StringRepresentable {
                 "轎槓上肩，這條路我走過幾十遍了。",
                 "幹，這個重量扛久了肩膀是會記住的。",
                 "今天天氣好，出轎順。",
+            },
+            new String[] {
+                    "%s，你也是走陣的？跟我們走一趟啦！",
+                    "%s 幹，你站這裡擋到轎了，讓一下。",
+                    "%s 敢不敢跟我扛一段？肩膀會記住的。",
             }),
 
     /** 機車少年。黑帽 T、工作褲、側背包。 */
@@ -50,6 +55,11 @@ public enum EightNineVariant implements StringRepresentable {
                 "幹，這聲音不對，回去再調。",
                 "油門一催就知道有沒有調好。",
                 "等一下再去繞一圈。",
+            },
+            new String[] {
+                    "%s，晚上十二點，敢不敢跟我尬一波？",
+                    "%s 你那台幾匹的？拉來聽聽啊。",
+                    "%s 幹，你這樣騎會被電啦，跟我走。",
             }),
 
     /** 潮流街頭仔。黑 T 翅膀圖騰、破牛仔褲、拖鞋、刺青。 */
@@ -64,6 +74,11 @@ public enum EightNineVariant implements StringRepresentable {
                 "這件限量的，排三個小時。",
                 "幹，鞋子髒了。",
                 "今天光線不錯。",
+            },
+            new String[] {
+                    "%s 幹，你這身在哪買的？",
+                    "%s，比一下啊，看誰氣勢強。",
+                    "%s 你敢不敢站過來跟我拍一張？",
             }),
 
     /** 地方大哥型。龍紋襯衫、金鍊、墨鏡。 */
@@ -78,6 +93,11 @@ public enum EightNineVariant implements StringRepresentable {
                 "幹，人呢，都跑去哪了。",
                 "這條街我看著長大的。",
                 "等一下還有一攤。",
+            },
+            new String[] {
+                    "%s 過來坐啦，這攤我的。",
+                    "%s，外面有事報我名，沒在怕的。",
+                    "%s 幹，你這個表不錯喔，哪買的。",
             }),
 
     /** 白衣白褲信徒。全白、佛珠。 */
@@ -92,6 +112,11 @@ public enum EightNineVariant implements StringRepresentable {
                 "心誠則靈，這句是真的。",
                 "幹，香灰掉到褲子上了。",
                 "今天先去廟裡拜一下。",
+            },
+            new String[] {
+                    "%s，一起去廟裡拜一下啦。",
+                    "%s 幹，你身上沒帶香喔？",
+                    "%s 跟緊我，今天保證你順。",
             }),
 
     /** 夜市兄弟團。深色連帽外套、工作褲、側背包。 */
@@ -106,6 +131,11 @@ public enum EightNineVariant implements StringRepresentable {
                 "幹，這攤收了喔。",
                 "一個人吃也是要吃。",
                 "老闆，一份鹽酥雞不要辣。",
+            },
+            new String[] {
+                    "%s 走啦，宵夜吃起來！",
+                    "%s，你敢不敢吃十份鹽酥雞？",
+                    "%s 幹，這攤你沒吃過就不算來過。",
             });
 
     private static final EightNineVariant[] BY_ID = values();
@@ -114,12 +144,16 @@ public enum EightNineVariant implements StringRepresentable {
     private final Identifier texture;
     private final String[] crowdLines;
     private final String[] soloLines;
+    /** 對著玩家講的。每一句都帶一個 %s，會換成玩家名字。 */
+    private final String[] playerLines;
 
-    EightNineVariant(String name, String[] crowdLines, String[] soloLines) {
+    EightNineVariant(String name, String[] crowdLines, String[] soloLines,
+                     String[] playerLines) {
         this.name = name;
         this.texture = Taiwan.id("textures/entity/eightnine/" + name + ".png");
         this.crowdLines = crowdLines;
         this.soloLines = soloLines;
+        this.playerLines = playerLines;
     }
 
     public Identifier texture() {
@@ -162,6 +196,17 @@ public enum EightNineVariant implements StringRepresentable {
     public String line(RandomSource random, boolean crowd) {
         String[] pool = crowd ? this.crowdLines : this.soloLines;
         return pool[random.nextInt(pool.length)];
+    }
+
+    /**
+     * 對著某個玩家講的一句，名字會被帶進去。
+     *
+     * <p>這一組跟另外兩組的差別不只是多一個名字：**它是有對象的**。前兩組是自言自語
+     * 或對同伴喊話，玩家只是剛好聽到；這一組是衝著你來的——約你尬車、問你衣服哪買的、
+     * 叫你過來坐。同一個 NPC 講前兩組跟講這一組，玩家的感受完全不一樣。
+     */
+    public String lineFor(RandomSource random, String playerName) {
+        return this.playerLines[random.nextInt(this.playerLines.length)].formatted(playerName);
     }
 
     /**

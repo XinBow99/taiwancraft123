@@ -18,6 +18,11 @@ import java.util.List;
  *
  * <p>訊息只送給範圍內的玩家（{@code sendSystemMessage} 逐一送），不是廣播。
  *
+ * <h2>三組台詞：對自己、對同伴、對你</h2>
+ * <p>第三組是**衝著玩家來的**——約你尬車、問你衣服哪買的、叫你過來坐，而且帶你的名字。
+ * 觸發條件是玩家走進六格內（一般聽得到的範圍是十二格）：距離就是「剛好聽到」與
+ * 「站在我面前」的分界。
+ *
  * <h2>成團與落單講的話不一樣</h2>
  * <p>這是整個族群最好認的特徵，也是 {@link EightNine} 的核心機制。人多的時候是招呼、
  * 是揪團、是「兄弟們」；一個人的時候音量會降下來。台詞在 {@code EightNineVariant}。
@@ -34,6 +39,13 @@ public class EightNineTalkGoal extends Goal {
     private static final int MAX_GAP = 900;
     /** 玩家要多近才聽得到。 */
     private static final double AUDIENCE = 12.0;
+    /**
+     * 玩家近到幾格就**衝著他講**（帶名字那組）。
+     *
+     * <p>比 {@link #AUDIENCE} 小很多是刻意的：十二格外的人只是剛好聽到，
+     * 走到六格內才算「你站在我面前」。距離就是這兩種語氣的分界。
+     */
+    private static final double FACE_TO_FACE = 6.0;
 
     private final EightNine self;
     private int cooldown;
@@ -64,11 +76,33 @@ public class EightNineTalkGoal extends Goal {
         List<Player> listeners = audience();
         if (listeners.isEmpty()) return;
 
-        String line = self.variant().line(self.getRandom(), self.inCrowd());
+        // 有人站得夠近就衝著他講，而且**成團時更敢**——落單的時候只有三成機率
+        // 開口點名，人多的時候八成。這是群膽在台詞上的第二層：不只換一組話，
+        // 還決定敢不敢直接對著你講
+        Player target = nearest(listeners);
+        boolean bold = self.getRandom().nextFloat() < (self.inCrowd() ? 0.8f : 0.3f);
+        String line = target != null && bold
+                ? self.variant().lineFor(self.getRandom(), target.getGameProfile().name())
+                : self.variant().line(self.getRandom(), self.inCrowd());
+
         Component message = Component.literal("<8+9> " + line);
         for (Player player : listeners) {
             player.sendSystemMessage(message);
         }
+    }
+
+    /** 聽眾裡最近的那個，而且要在 {@link #FACE_TO_FACE} 之內。 */
+    private Player nearest(List<Player> listeners) {
+        Player best = null;
+        double bestDist = FACE_TO_FACE * FACE_TO_FACE;
+        for (Player player : listeners) {
+            double d = self.distanceToSqr(player);
+            if (d < bestDist) {
+                bestDist = d;
+                best = player;
+            }
+        }
+        return best;
     }
 
     private int nextGap() {
