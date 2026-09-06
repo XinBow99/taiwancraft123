@@ -12,6 +12,16 @@ import {readFileSync, writeFileSync} from 'node:fs';
 const src = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const TEX = src.textures[0].uv_width;          // UV 是貼圖像素空間，不是 project resolution
 
+/**
+ * 模型單位 → 方塊。
+ *
+ * <p>**一定要除。**原版的 {@code ModelPart$Vertex} 的存取器與 {@code translateAndRotate}
+ * 都會自己 /16，走 submitCustomGeometry 沒有人幫你做。忘了除的話整台大 16 倍，
+ * 而且地面那條線（y=24）會掉到實體下方 22.5 格——車看起來又巨大又埋在地裡，
+ * 是同一個 bug 的兩個症狀。
+ */
+const S = 1 / 16;
+
 const rad = d => d * Math.PI / 180;
 /**
  * 一層的變換。
@@ -93,9 +103,9 @@ function emit(el, xf, bone) {
     n = n.map(x => x / len);
     const pivot = bone.pivot;
     for (const p of pts) bone.quads.push(
-      +(p[0] - pivot[0]).toFixed(4),
-      +(p[1] - (24 - pivot[1])).toFixed(4),
-      +(p[2] - pivot[2]).toFixed(4),
+      +((p[0] - pivot[0]) * S).toFixed(5),
+      +((p[1] - (24 - pivot[1])) * S).toFixed(5),
+      +((p[2] - pivot[2]) * S).toFixed(5),
       +p[3].toFixed(5), +p[4].toFixed(5));
     bone.normals.push(+n[0].toFixed(4), +n[1].toFixed(4), +n[2].toFixed(4));
   }
@@ -108,7 +118,8 @@ for (const n of src.outliner) walk(n, ID, bones.get('body'));
 const out = {
   bones: [...bones.values()]
     .filter(b => b.quads.length)
-    .map(b => ({name: b.name, pivot: [b.pivot[0], 24 - b.pivot[1], b.pivot[2]],
+    .map(b => ({name: b.name,
+                pivot: [b.pivot[0] * S, (24 - b.pivot[1]) * S, b.pivot[2] * S],
                 quads: b.quads, normals: b.normals})),
 };
 writeFileSync(process.argv[3], JSON.stringify(out));

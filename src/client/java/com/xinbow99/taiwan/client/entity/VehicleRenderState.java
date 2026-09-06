@@ -13,6 +13,18 @@ public class VehicleRenderState extends EntityRenderState {
     public float steer;
     /** 車輪的滾動角（弧度）。 */
     public float wheelSpin;
+    /** 儀表時速（km/h）。怠速微震靠它判斷「車真的停著」。 */
+    public float speedKmh;
+    /**
+     * 平滑過的縱向加速度，-1 到 1。起步抬頭用。
+     *
+     * <p>不是從實體讀的——{@link com.xinbow99.taiwan.entity.RoadVehicle} 沒有這個欄位，
+     * 而它的 {@code speed} 只有騎士自己的客戶端算得出來。這裡改成在算繪端
+     * 對時速做一階差分再低通。
+     */
+    public float accel;
+    /** 上一幀的時速。NaN 代表這個算繪狀態剛建立，還沒有可以做差分的基準。 */
+    public float prevSpeedKmh = Float.NaN;
     /** 車身左右傾（度）。轉彎壓車用。 */
     public float lean;
     /** 車頭朝向（度）。EntityRenderState 沒有這個欄位，要自己抄。 */

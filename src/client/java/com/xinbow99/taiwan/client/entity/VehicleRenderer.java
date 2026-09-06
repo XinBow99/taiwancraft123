@@ -86,6 +86,20 @@ public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderSt
         float horizontal = (float) Math.sqrt(motion.x * motion.x + motion.z * motion.z);
         state.wheelSpin = (entity.tickCount + partialTick) * horizontal * 1.6f;
         state.steer = entity.steerAngle();
+        // 起步抬頭要的縱向加速度。實體那邊沒有現成的欄位可抄（見 VehicleRenderState.accel），
+        // 所以在這裡對時速做差分。extractRenderState 是每一幀跑、不是每一 tick，差分出來的
+        // 量級會跟著畫面更新率跑，所以夾住再低通——這個值只用來驅動一個 3 度的姿態，
+        // 準不準沒關係，不會抖才重要。
+        //
+        // 算繪狀態是**每個實體留一份**、跨幀重用的，所以 prevSpeedKmh 存得住。萬一哪天不是，
+        // 差分永遠讀到 NaN 的那一支，accel 就一直是 0：車不會抬頭，但也不會亂跳。
+        state.speedKmh = entity.speedKmh();
+        float prevKmh = state.prevSpeedKmh;
+        state.prevSpeedKmh = state.speedKmh;
+        if (!Float.isNaN(prevKmh)) {
+            float raw = Mth.clamp((state.speedKmh - prevKmh) * 0.6f, -1.0f, 1.0f);
+            state.accel += (raw - state.accel) * 0.25f;
+        }
         // 壓車角度是實體自己算的（把手角度 × 速度），不是這裡從把手角度推的：
         // 高速時把手只打得動 8 度，用「龍頭的一半」去傾，全速過彎會只傾 4 度像在滑冰
         state.lean = entity.leanAngle();
