@@ -26,8 +26,6 @@ import java.util.Map;
  */
 public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderState> {
 
-    public static final ModelLayerLocation LAYER =
-            new ModelLayerLocation(Taiwan.id("scooter"), "main");
     public static final ModelLayerLocation LANBAO_LAYER =
             new ModelLayerLocation(Taiwan.id("lanbao"), "main");
     public static final ModelLayerLocation MASHALA_LAYER =
@@ -36,18 +34,29 @@ public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderSt
             new ModelLayerLocation(Taiwan.id("cygnus"), "main");
 
     /**
-     * 兩款車的模型都在這裡烘好，不是每次要畫才建。
+     * 開大燈時要疊上去的發光貼圖。只有做了的車款才有。
+     *
+     * <p>那張圖除了燈罩以外全是透明的——所以第二次算繪只會畫出燈罩，其餘像素被 cutout
+     * 丟掉。沒有這一項的車款（目前是兩台跑車）按了大燈鍵不會有反應。
+     */
+    private static final Map<VehicleModel, Identifier> LIT_TEXTURE = Map.of(
+            VehicleModel.CYGNUS, Taiwan.id("textures/entity/cygnus_lit.png"));
+
+    /** 全亮的 lightmap 座標（區塊光 15、天光 15）。這個版本沒有具名常數，只能寫值。 */
+    private static final int FULL_BRIGHT = 0xF000F0;
+
+    /**
+     * 各車款的模型都在這裡烘好，不是每次要畫才建。
      *
      * <p>{@code bakeLayer} 會把整棵零件樹展開成頂點資料，那是建構期的工作；放進
-     * {@code submit()} 的話每一幀、每一台車都要重來一次。兩個模型的記憶體成本是常數，
-     * 用一個 {@code EnumMap} 換掉 if-else 是為了以後加第三款車時不用再動這個方法。
+     * {@code submit()} 的話每一幀、每一台車都要重來一次。模型的記憶體成本是常數，
+     * 用一個 {@code EnumMap} 換掉 if-else 是為了以後加車款時不用再動這個方法。
      */
     private final Map<VehicleModel, EntityModel<VehicleRenderState>> models;
 
     public VehicleRenderer(EntityRendererProvider.Context context) {
         super(context);
         this.models = new EnumMap<>(VehicleModel.class);
-        this.models.put(VehicleModel.CLASSIC, new ScooterModel(context.bakeLayer(LAYER)));
         this.models.put(VehicleModel.CYGNUS, new CygnusModel(context.bakeLayer(CYGNUS_LAYER)));
         this.models.put(VehicleModel.LANBAO, new LanbaoModel(context.bakeLayer(LANBAO_LAYER)));
         this.models.put(VehicleModel.MASHALA, new MashalaModel(context.bakeLayer(MASHALA_LAYER)));
@@ -80,6 +89,8 @@ public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderSt
         // 跟位置用的是同一個時間軸。原版每一個實體算繪器都是這樣做的
         state.yRot = entity.getYRot(partialTick);
         state.variant = entity.variant();
+        state.parked = entity.getPassengers().isEmpty();
+        state.headlight = entity.headlightOn();
     }
 
     @Override
@@ -117,6 +128,20 @@ public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderSt
         collector.submitModel(model, state, pose, state.variant.texture(), state.lightCoords,
                 net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
                 state.outlineColor, null);
+
+        // 大燈：整台再畫一次，但換成「只有燈罩不透明、其餘全透明」的貼圖，亮度寫死全亮。
+        //
+        // 為什麼是疊一層而不是把燈罩畫亮：實體算繪一次只吃一個亮度值，整台用全亮的話
+        // 連輪胎和坐墊都會在夜裡發光。分兩次畫、第二次只有燈罩有像素，才只有燈亮。
+        //
+        // 這是**視覺上的**發光，不會真的照亮周圍方塊——原版沒有動態光源，那要另外
+        // 塞光源方塊或靠 LambDynamicLights 之類的模組。
+        if (state.headlight && LIT_TEXTURE.containsKey(state.variant)) {
+            collector.submitModel(model, state, pose, LIT_TEXTURE.get(state.variant),
+                    FULL_BRIGHT,
+                    net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
+                    state.outlineColor, null);
+        }
         pose.popPose();
 
         super.submit(state, pose, collector, camera);

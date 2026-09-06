@@ -48,6 +48,7 @@ public class Taiwan implements ModInitializer {
 		TaiwanEntities.register();
 		TaiwanSounds.register();
 		TaiwanItems.register();
+		com.xinbow99.taiwan.net.HeadlightPayload.register();
 
 		// 伺服器一起來就把生態系來源綁好。
 		//

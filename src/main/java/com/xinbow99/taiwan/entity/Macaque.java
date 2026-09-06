@@ -6,6 +6,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.util.Mth;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -53,11 +57,43 @@ public class Macaque extends PathfinderMob {
     /** 偷到東西之後幾 tick 開始吃。跑掉的時間要夠長，不然玩家一轉身就搶得回來。 */
     private static final int EAT_DELAY = 120;
 
+    /**
+     * 站著不動多久才坐下來。
+     *
+     * <p>**這個數字決定牠看起來是活的還是抽搐的。**獼猴走兩步停一下是常態，門檻設太低的話
+     * 每次尋路的空檔牠都會蹲下再站起來。40 tick（兩秒）已經長到只有「真的停下來了」才會發生。
+     */
+    private static final int SIT_AFTER_STILL = 40;
+
+    /** 坐下／站起來各要幾 tick 補完。姿勢差很多，切太快會像瞬移。 */
+    private static final float SIT_BLEND_STEP = 1.0f / 8.0f;
+
+    /** 坐下：伺服器決定，客戶端要知道才畫得出來，所以走同步資料。 */
+    private static final EntityDataAccessor<Boolean> DATA_SITTING =
+            SynchedEntityData.defineId(Macaque.class, EntityDataSerializers.BOOLEAN);
+
     private int eatTimer;
+    private int stillTicks;
+
+    /**
+     * 坐姿的補間值，0＝站著、1＝完全坐下。
+     *
+     * <p>同步過來的是布林，但布林直接拿去擺姿勢會是一格內從站變坐。所以兩端都各自把它
+     * 補成連續值；帶 {@code O} 的是上一 tick 的值，算繪時用 partialTick 再插一次，
+     * 這樣低 tick 率下動作也是滑的。
+     */
+    private float sitAmount;
+    private float sitAmountO;
 
     public Macaque(EntityType<? extends Macaque> type, Level level) {
         super(type, level);
         this.setCanPickUpLoot(false);
+    }
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_SITTING, false);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -102,10 +138,63 @@ public class Macaque extends PathfinderMob {
     @Override
     public void aiStep() {
         super.aiStep();
-        if (this.level().isClientSide() || !hasLoot()) return;
 
+        // 補間兩端都要跑：伺服器只送布林過來，客戶端負責把它變成連續的姿勢
+        this.sitAmountO = this.sitAmount;
+        this.sitAmount = Mth.approach(this.sitAmount, isSitting() ? 1.0f : 0.0f, SIT_BLEND_STEP);
+
+        if (this.level().isClientSide()) return;
+
+        updateSitting();
+
+        if (!hasLoot()) return;
         if (--this.eatTimer > 0) return;
         eat();
+    }
+
+    // ------------------------------------------------------------------ 姿勢
+
+    public boolean isSitting() {
+        return this.entityData.get(DATA_SITTING);
+    }
+
+    public float sitAmount(float partialTick) {
+        return Mth.lerp(partialTick, this.sitAmountO, this.sitAmount);
+    }
+
+    /**
+     * 坐下就是牠的待機姿勢。
+     *
+     * <h2>不寫成 Goal</h2>
+     * <p>坐下不需要搶 {@code Flag.MOVE}——它不決定牠去哪裡，只決定牠停下來的時候長什麼樣。
+     * 寫成 Goal 反而要跟散步、看玩家、搶劫排優先序，而且搶劫那個 goal 從搶到到吃完
+     * 一直是 running 的（{@code canContinueToUse} 只看 hasLoot），低優先序的坐下 goal
+     * 永遠輪不到——**而那正是最該坐下的時刻**（跑到安全處、蹲著吃）。
+     *
+     * <p>所以改成純粹的觀察：導航停了、沒有目標、腳踏實地，就坐下；一開始移動就站起來。
+     * 散步 goal 自然會把牠叫起來，不需要任何互斥處理。
+     */
+    private void updateSitting() {
+        boolean canSit = this.getTarget() == null
+                && !this.isInWater()
+                && !this.onClimbable()
+                && this.onGround();
+
+        boolean still = canSit
+                && this.getNavigation().isDone()
+                && this.getDeltaMovement().horizontalDistanceSqr() < 1.0E-4;
+
+        if (!still) {
+            this.stillTicks = 0;
+            this.entityData.set(DATA_SITTING, false);
+            return;
+        }
+
+        this.stillTicks++;
+        // 搶到手又停下來了＝已經跑到安全的地方，這時候坐下來吃。門檻砍半是因為
+        // 這個情境本來就該快一點——玩家追過來的時候要看得到牠已經在吃了
+        int threshold = hasLoot() ? SIT_AFTER_STILL / 2 : SIT_AFTER_STILL;
+        this.entityData.set(DATA_SITTING, this.stillTicks > threshold);
     }
 
     /**

@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
  * 車款。
  *
  * <h2>為什麼是變體而不是第二個實體種類</h2>
- * <p>兩台車的物理、車主、損壞、落水熄火、引擎聲**完全一樣**——不一樣的只有外型。
+ * <p>各車款的物理、車主、損壞、落水熄火、引擎聲**完全一樣**——不一樣的只有外型與調校。
  * 開第二個 {@code EntityType} 等於把 {@link RoadVehicle} 那七百行複製一份，而那個檔案還在
  * 調校中：之後每修一個轉向或碰撞的問題都要做兩次，遲早有一次會忘記。
  *
@@ -24,10 +24,13 @@ import net.minecraft.world.phys.Vec3;
  */
 public enum VehicleModel implements StringRepresentable {
 
-    /** 通用速克達。消光深灰、圓頭燈，車身 1.66 格長。 */
-    CLASSIC("classic", Kind.SCOOTER, 0.8f, 1.4f, 0.813f, -0.213f, 0.863f, -0.488f,
-            120f, 5f, 0.065, 0.075, 45f, 8f, 22f),
-    /** 勁戰四代 125。紅黑、體素風的細節，整台放大 1.3 倍後 2.16 格長。 */
+    /**
+     * 勁戰四代 125。白黑配，模型是從真車的 GLB 網格體素化出來的。
+     *
+     * <p>原本還有一台「通用速克達」（{@code classic}）。移除了——兩台都是速克達、物理完全
+     * 一樣，差別只有外型，而勁戰是照真車量出來的。留著只是多一份要維護的模型與貼圖。
+     * 舊存檔裡 {@code variant: "classic"} 的車會由 {@link #byName} 退回這台。
+     */
     CYGNUS("cygnus", Kind.SCOOTER, 0.98f, 1.7f, 1.073f, -0.29f, 1.123f, -0.633f,
             120f, 5f, 0.065, 0.075, 45f, 8f, 22f),
 
@@ -41,11 +44,11 @@ public enum VehicleModel implements StringRepresentable {
      * <p>調校：極速 260、破百 3.4 秒、抓地力是機車的兩倍多。**壓車角度是 0**——
      * 四個輪子的車不會倒，那一項留著的話過彎時整台會像船一樣側翻。
      */
-    LANBAO("lanbao", Kind.CAR, 1.9f, 1.3f, 0.72f, -0.05f, 0.72f, -0.62f,
+    LANBAO("lanbao", Kind.CAR, 2.2f, 1.3f, 0.25f, 0.15f, 0.25f, 0.15f,
             260f, 3.4f, 0.150, 0.165, 34f, 7f, 0f),
 
     /**
-     * 馬莎拉蹄。四門的大型跑房車。
+     * 馬莎拉蹄。斜背雙門的大型 GT。
      *
      * <p>同樣是同音替字，而且換完之後自己組成另一個意思：「馬…蹄」。
      * 跑車的性能單位本來就叫馬力，這個雙關是刻意的。
@@ -53,7 +56,7 @@ public enum VehicleModel implements StringRepresentable {
      * <p>比藍爆重、比藍爆長，所以極速略低、轉動慣量大得多——它是坐起來舒服的那一種，
      * 不是最快的那一種。
      */
-    MASHALA("mashala", Kind.CAR, 2.0f, 1.45f, 0.78f, 0.0f, 0.78f, -0.75f,
+    MASHALA("mashala", Kind.CAR, 2.2f, 1.45f, 0.35f, 0.30f, 0.35f, 0.30f,
             240f, 4.2f, 0.135, 0.150, 32f, 6.5f, 0f);
 
     /** 兩輪還是四輪。決定的是「會不會壓車」與「幾個座位」這類整類共通的事。 */
@@ -96,10 +99,13 @@ public enum VehicleModel implements StringRepresentable {
         this.steerLockSlow = steerLockSlow;
         this.steerLockFast = steerLockFast;
         this.maxLean = maxLean;
-        this.texture = Taiwan.id("textures/entity/" + (name.equals("classic") ? "scooter" : name) + ".png");
+        this.texture = Taiwan.id("textures/entity/" + name + ".png");
         this.dimensions = EntityDimensions.scalable(width, height);
-        this.riderSeat = new Vec3(0.0, riderY, riderZ);
-        this.pillionSeat = new Vec3(0.0, pillionY, pillionZ);
+        // 四輪車的兩個座位是**並排**的，兩輪車是前後。所以橫向的偏移由車種決定，
+        // 不是再開兩個參數——「汽車的兩個人坐在同一排」不是某一台車的調校，是四輪車的定義
+        double sideways = kind == Kind.CAR ? 0.42 : 0.0;
+        this.riderSeat = new Vec3(-sideways, riderY, riderZ);
+        this.pillionSeat = new Vec3(sideways, pillionY, pillionZ);
     }
 
     /**
@@ -121,6 +127,10 @@ public enum VehicleModel implements StringRepresentable {
      *
      * <p>兩台車的數字不一樣，因為坐墊位置本來就不同——共用一組的話，勁戰的騎士會浮在
      * 坐墊上方三分之一格。
+     *
+     * <p>汽車的座位高度是從**車頂**回推的，不是從坐墊：人坐著的時候頭大概在座位上方
+     * 一格，所以座位要壓到「車頂高度減一格」，頭才不會穿出車頂。機車沒有這個限制，
+     * 所以機車是照坐墊、汽車是照車頂。
      *
      * <p><b>數字是 tools/seat-point.mjs 從 models.js 算出來的，不要手改。</b>坐墊一動就重跑
      * 一次那支腳本。手算要同時處理模型單位換算、地面錨定的縮放、還有上面那個 z 的反向，
@@ -182,19 +192,19 @@ public enum VehicleModel implements StringRepresentable {
     /**
      * 從同步過來的序號還原。
      *
-     * <p>超出範圍就退回 {@link #CLASSIC} 而不是丟例外：這個值會從網路與存檔進來，
+     * <p>超出範圍就退回 {@link #CYGNUS} 而不是丟例外：這個值會從網路與存檔進來，
      * 舊存檔沒有這個欄位、或是以後刪掉某個車款時都會讀到對不上的數字，
      * 那時候該顯示成一台普通的車，不是讓整個世界載入失敗。
      */
     public static VehicleModel byId(int id) {
-        return id >= 0 && id < BY_ID.length ? BY_ID[id] : CLASSIC;
+        return id >= 0 && id < BY_ID.length ? BY_ID[id] : CYGNUS;
     }
 
     public static VehicleModel byName(String name) {
         for (VehicleModel variant : BY_ID) {
             if (variant.name.equals(name)) return variant;
         }
-        return CLASSIC;
+        return CYGNUS;
     }
 
     @Override

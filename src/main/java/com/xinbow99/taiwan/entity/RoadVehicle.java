@@ -16,7 +16,11 @@ import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.VehicleEntity;
 import net.minecraft.world.item.Item;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -134,6 +138,9 @@ public class RoadVehicle extends VehicleEntity {
     /** 車款。要同步：算繪端靠它挑模型與貼圖。 */
     private static final EntityDataAccessor<Integer> DATA_VARIANT =
             SynchedEntityData.defineId(RoadVehicle.class, EntityDataSerializers.INT);
+    /** 大燈開關。要同步：算繪端靠它決定要不要疊那層發光貼圖。 */
+    private static final EntityDataAccessor<Boolean> DATA_HEADLIGHT =
+            SynchedEntityData.defineId(RoadVehicle.class, EntityDataSerializers.BOOLEAN);
     /** 壓車角度（度）。同上，純視覺。 */
     private static final EntityDataAccessor<Float> DATA_LEAN =
             SynchedEntityData.defineId(RoadVehicle.class, EntityDataSerializers.FLOAT);
@@ -198,7 +205,8 @@ public class RoadVehicle extends VehicleEntity {
         builder.define(DATA_STALLED, false);
         builder.define(DATA_STEER, 0f);
         builder.define(DATA_LEAN, 0f);
-        builder.define(DATA_VARIANT, VehicleModel.CLASSIC.ordinal());
+        builder.define(DATA_VARIANT, VehicleModel.CYGNUS.ordinal());
+        builder.define(DATA_HEADLIGHT, false);
     }
 
     // ------------------------------------------------------------------ 車主
@@ -234,6 +242,17 @@ public class RoadVehicle extends VehicleEntity {
     public void setVariant(VehicleModel variant) {
         this.entityData.set(DATA_VARIANT, variant.ordinal());
         refreshDimensions();
+    }
+
+    public boolean headlightOn() {
+        return this.entityData.get(DATA_HEADLIGHT);
+    }
+
+    /** 由 {@code HeadlightPayload} 在伺服器端呼叫。翻轉而不是設值——見那個封包的說明。 */
+    public void toggleHeadlight() {
+        this.entityData.set(DATA_HEADLIGHT, !headlightOn());
+        if (!headlightOn()) clearLamp();
+        this.playSound(SoundEvents.LEVER_CLICK, 0.5f, headlightOn() ? 1.4f : 1.1f);
     }
 
     public boolean stalled() {
@@ -405,8 +424,90 @@ public class RoadVehicle extends VehicleEntity {
 
         if (!this.level().isClientSide()) {
             this.applyEffectsFromBlocks();
+            headlamp();
         }
         particles(wet);
+    }
+
+    // ------------------------------------------------------------------ 大燈照明
+
+    /**
+     * 大燈實際照亮路面用的光源方塊位置。**只存在伺服器端，不同步也不存檔。**
+     *
+     * <p>不存檔是刻意的：世界重新載入時這個欄位是 null，於是舊的光源不會被認領，
+     * 但它也已經隨著方塊一起被存進去了——那就是下面說的孤兒。存檔反而會讓「載入後
+     * 位置對不上實際方塊」變成另一種錯。
+     */
+    /** 光源方塊的亮度。15 會把整條街照成白天；12 大概是機車大燈打在路面上的感覺。 */
+    private static final int LAMP_LEVEL = 12;
+
+    private BlockPos lampPos;
+
+    /**
+     * 在車前方種一個隱形光源方塊，讓路真的被照亮。
+     *
+     * <h2>原版沒有動態光源，只能用方塊模擬</h2>
+     * <p>{@code minecraft:light} 是原版 1.17 就有的隱形發光方塊（手上沒拿光源物品時完全
+     * 看不見）。每次車開到新的方塊格就把光源搬過去——這是所有「動態光源」模組在沒有
+     * 改算繪管線時的共同做法。
+     *
+     * <h2>三個必須遵守的限制</h2>
+     * <ol>
+     *   <li><b>只覆蓋空氣。</b>玩家蓋的東西不能被吃掉，水也不行（光源方塊可以泡水，
+     *       但那會改變水的狀態、還會影響水流）。</li>
+     *   <li><b>拆的時候要確認那還是我們種的光源。</b>玩家可能在那一格蓋了東西，
+     *       不檢查就會把人家的方塊拆掉。</li>
+     *   <li><b>用 {@code UPDATE_CLIENTS} 而不是 {@code UPDATE_ALL}。</b>後者會觸發鄰居更新，
+     *       車騎過紅石線就會把電路踩爆。光照更新是 chunk 自己做的，不靠鄰居更新，
+     *       所以省掉那一段不影響照明。</li>
+     * </ol>
+     *
+     * <h2>成本與已知缺陷</h2>
+     * <p>只有在**目標格真的變了**才動方塊，不是每 tick 都動——但全速時大約每兩三 tick
+     * 就跨一格，光引擎每次都要重新傳播一顆半徑十幾格的球。這是這個做法本質的代價。
+     *
+     * <p><b>伺服器崩潰或強制關閉時，最後那一顆光源會留在世界裡。</b>正常的移除路徑
+     * （下車、關燈、實體被移除、區塊卸載）都有清掉，但沒有辦法涵蓋沒有走完的關機。
+     */
+    private void headlamp() {
+        BlockPos want = null;
+        if (headlightOn() && !stalled()) {
+            // 從騎士視線高度往車頭方向 3.5 格。太近會照到自己車身下方，太遠在轉彎時
+            // 光源會甩到路邊的牆裡（牆不是空氣，就會整個不亮）
+            float yaw = this.getYRot() * ((float) Math.PI / 180f);
+            double dx = -Math.sin(yaw) * 3.5;
+            double dz = Math.cos(yaw) * 3.5;
+            want = BlockPos.containing(this.getX() + dx, this.getY() + 1.2, this.getZ() + dz);
+        }
+
+        if (java.util.Objects.equals(want, this.lampPos)) return;
+
+        clearLamp();
+
+        if (want != null && this.level().isLoaded(want) && this.level().getBlockState(want).isAir()) {
+            this.level().setBlock(want,
+                    Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LAMP_LEVEL),
+                    Block.UPDATE_CLIENTS);
+            this.lampPos = want;
+        }
+    }
+
+    /** 拆掉自己種的那顆光源。只在「那一格還是我們種的光源」時才動手。 */
+    private void clearLamp() {
+        if (this.lampPos == null) return;
+        if (this.level().isLoaded(this.lampPos)
+                && this.level().getBlockState(this.lampPos).is(Blocks.LIGHT)) {
+            this.level().setBlock(this.lampPos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+        }
+        this.lampPos = null;
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        // 區塊卸載、實體被殺、玩家收起來——每一條路徑都會走到這裡。
+        // 少了這一行，世界上每一台曾經開過燈的車都會留下一顆永遠亮著的隱形方塊
+        if (!this.level().isClientSide()) clearLamp();
+        super.remove(reason);
     }
 
     /**
@@ -659,7 +760,7 @@ public class RoadVehicle extends VehicleEntity {
             this.setHurtTime(10);
             this.playSound(SoundEvents.ANVIL_LAND, 0.6f, 1.6f);
             if (this.getDamage() > 40f) {
-                this.destroy(this.level().getServer().overworld(), TaiwanItems.SCOOTER);
+                this.destroy(this.level().getServer().overworld(), getDropItem());
             }
         }
     }
@@ -762,12 +863,12 @@ public class RoadVehicle extends VehicleEntity {
 
     @Override
     protected Item getDropItem() {
-        // 掉回自己那一款，不是一律掉通用款——不然把勁戰打壞會換到一台別的車
+        // 掉回自己那一款。**不要留 default**：這樣以後新增車款忘記加對應的物品時，
+        // 是編譯期就報錯，而不是默默掉成別台車
         return switch (variant()) {
             case CYGNUS -> TaiwanItems.CYGNUS;
             case LANBAO -> TaiwanItems.LANBAO;
             case MASHALA -> TaiwanItems.MASHALA;
-            default -> TaiwanItems.SCOOTER;
         };
     }
 
@@ -789,6 +890,7 @@ public class RoadVehicle extends VehicleEntity {
         this.speed = input.getFloatOr("speed", 0f);
         // 舊存檔沒有這個欄位，讀不到就是通用款——這正是 byName 不丟例外的理由
         setVariant(VehicleModel.byName(input.getStringOr("variant", "")));
+        this.entityData.set(DATA_HEADLIGHT, input.getBooleanOr("headlight", false));
     }
 
     @Override
@@ -796,5 +898,6 @@ public class RoadVehicle extends VehicleEntity {
         if (this.owner != null) output.store("owner", net.minecraft.core.UUIDUtil.CODEC, this.owner);
         output.putFloat("speed", (float) this.speed);
         output.putString("variant", variant().getSerializedName());
+        output.putBoolean("headlight", headlightOn());
     }
 }

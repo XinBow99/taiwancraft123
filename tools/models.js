@@ -98,6 +98,91 @@ function slabs(prefix, list, depth = 1.1) {
   ]);
 }
 
+/**
+ * 跟 slabs 一樣切橫斷面，但**每一片自己也是圓的**。
+ *
+ * <p>slabs 的每一片是一個長方形，所以整台車的側面是平的、上下緣是直角。機車可以，
+ * 汽車不行——汽車從正面看是一個往上收、往下也微收的形狀（最寬的地方在腰線），
+ * 車頂比車身窄一大截。用長方形做出來的是一個盒子，不是一台車。
+ *
+ * <p>所以這裡把每一片再往下切成 bands 層，每層的寬度乘上一條曲線：腰線（shoulder）
+ * 以上走橢圓收到 top 倍，以下走二次曲線收到 bottom 倍。
+ *
+ * <h2>玻璃也是這樣長出來的</h2>
+ * <p>車窗**不是另外貼上去的板子**，而是**腰線以上**的那幾層換成玻璃色。
+ * 之前前擋玻璃三次擺錯位置（浮在引擎蓋上、戳出車頂、被車殼擋住），根因都是
+ * 「板子要跟車殼的曲面對齊」這件事得靠人算。改成從同一組橫斷面長出來之後，
+ * 玻璃在定義上就貼齊車身，不可能再飄。
+ *
+ * <p>用「腰線」而不是「最上面 N 層」是有差的：引擎蓋那一段的橫斷面只有 6 高、
+ * 車廂那一段有 15 高，同樣取兩層的話一個變成整片黑、另一個只剩一條縫。
+ * 腰線是一個水平面，車頭高過它的地方自然沒有窗，車廂低於它的地方自然是窗。
+ *
+ * 每筆是 [z, yTop, yBottom, width, colour]。
+ */
+function hull(prefix, list, opt = {}) {
+  const {
+    depth = 1.6, bands = 7,
+    top = 0.45,       // 車頂寬度佔最寬處的比例
+    bottom = 0.86,    // 底部收進去的比例
+    shoulder = 0.42,  // 最寬的地方在整片高度的幾成（0 是車頂）
+    belt = null,      // { y, colour, from, to, roof: [z0, z1] }
+  } = opt;
+
+  const widthAt = (t) => (t < shoulder
+    ? top + (1 - top) * Math.sqrt(1 - ((shoulder - t) / shoulder) ** 2)
+    : 1 - (1 - bottom) * ((t - shoulder) / (1 - shoulder)) ** 2);
+
+  const out = [];
+  let n = 0;
+  for (const [z, yTop, yBot, w, colour] of list) {
+    // 車窗只出現在車廂那一段的 z 範圍內。不限制的話引擎蓋尾端只要比腰線高一點點，
+    // 就會沿著整條車尾長出一條黑邊
+    const glazing = belt && z >= belt.from && z <= belt.to;
+    const [roofFrom, roofTo] = belt?.roof ?? [Infinity, -Infinity];
+    const h = yBot - yTop;
+    for (let i = 0; i < bands; i++) {
+      const y0 = yTop + (h * i) / bands;
+      const y1 = yTop + (h * (i + 1)) / bands;
+      const mid = (y0 + y1) / 2;
+      const ww = w * widthAt((i + 0.5) / bands);
+      // 平車頂那一段的最上面一層是鈑金，不是玻璃——天窗不是這一類車的特徵
+      const roof = i === 0 && z >= roofFrom && z <= roofTo;
+      out.push([
+        `${prefix}${n++}`, null,
+        [-ww / 2, 0, -depth / 2], [ww, y1 - y0, depth],
+        [0, y0, z], [0, 0, 0], glazing && mid < belt.y && !roof ? belt.colour : colour,
+      ]);
+    }
+  }
+  return out;
+}
+
+/**
+ * 三軸各自縮放。**以地面（y=24）為基準**，理由同 scaleParts。
+ *
+ * <p>要分軸是因為第一版的兩台跑車長寬比是 1.77，而真的跑車是 2.3 左右——
+ * 整台等比放大只會得到一台更大的、一樣胖的車。
+ *
+ * <p>名字符合 uniform 的零件（輪子那一組）改用三軸的平均值等比縮放：
+ * 輪子分軸縮放會變成橢圓。
+ */
+function stretch(parts, kx, ky, kz, uniform = /^(wheel|rim|hub|cal)/) {
+  const k = (kx + ky + kz) / 3;
+  const groundY = (y) => 24 - (24 - y) * ky;
+  return parts.map(([name, parent, origin, size, pose, rot, colour]) => {
+    const s = uniform.test(name) ? [k, k, k] : [kx, ky, kz];
+    return [
+      name, parent,
+      origin.map((v, i) => v * s[i]),
+      size.map((v, i) => v * s[i]),
+      parent ? pose.map((v, i) => v * s[i])
+        : [pose[0] * kx, groundY(pose[1]), pose[2] * kz],
+      rot, colour,
+    ];
+  });
+}
+
 // 8+9 模型的預覽配色。實際遊戲用的是六套 skin（tools/skin-eightnine.mjs 產生），
 // 這一組只是為了在檢視器與算圖裡看得出形狀
 const C89 = {
@@ -495,14 +580,16 @@ const MODELS = {
     title: '藍爆堅尼',
     source: 'LanbaoModel.createBodyLayer()',
     pivot: [0, 16, 0],
-    scale: 4.6,
-    parts: [
+    scale: 3.4,
+    // 長 4.95、寬 2.36、高 1.30 格。分軸放大：長度加最多（長寬比 1.77 → 2.10），
+    // 高度次之，寬度幾乎不動——「大台一點」要的是長，不是胖
+    parts: stretch([
       // 側面輪廓：[z, 上緣y, 下緣y, 寬, 色]。
       //
       // 楔形超跑的側面是**三段直線**，不是一條弧：貼地的車頭一路平緩往上（引擎蓋）、
       // 一段陡的擋風玻璃、一小段平的車頂，然後長長地滑下去變成引擎蓋。
       // 第一版是一條平滑的弧，整台讀起來像一顆花生。
-      ...slabs('body', [
+      ...hull('body', [
         [-30, 20.8, 23.2, 18, CAR.PAINT],
         [-28.5, 20.4, 23.2, 22, CAR.PAINT],
         [-27, 20.0, 23.2, 26, CAR.PAINT],
@@ -540,14 +627,7 @@ const MODELS = {
         [21, 15.6, 23.0, 27, CAR.PAINT],
         [22.5, 16.4, 23.2, 24, CAR.PAINT],
         [24, 17.4, 23.2, 20, CAR.DARK],
-      ], 1.6),
-
-      // 玻璃：中心點與角度都是從上面那串橫斷面算出來的，不是目測擺的。
-      // 前擋 (z −13.5, y 16.6) → (z −6, y 7.8)：長 11.6、離垂直 40 度。
-      ['glass_f',  null, [-12, -5.8, -0.7],[24, 11.6, 1.4],[0, 11.2, -9.75],[40,0,0], CAR.GLASS],
-      ['glass_l',  null, [-0.6, -2.3, -3.75],[1.2, 4.6, 7.5],[13.5, 9.7, -2.25],[0,0,0],  CAR.GLASS],
-      ['glass_r',  null, [-0.6, -2.3, -3.75],[1.2, 4.6, 7.5],[-13.5, 9.7, -2.25],[0,0,0], CAR.GLASS],
-      ['glass_b',  null, [-11, -4.0, -0.7],[22, 7.9, 1.4],[0, 10.2, 3],[-49,0,0],CAR.GLASS],
+      ], { depth: 1.6, bands: 8, belt: { y: 15.5, colour: CAR.GLASS, from: -13, to: 7, roof: [-6, 2] } }),
 
       // 車頭。這台的臉是**兩道往外下沉的白色折線**加上黑色的進氣口——
       // 沒有水箱罩（引擎在後面），所以整張臉是靠燈的角度撐起來的。
@@ -599,18 +679,19 @@ const MODELS = {
       ['rim_rr',   'wheel_rr', [-2.8, -2.6, -2.6],[5.6, 5.2, 5.2],[0,0,0],[0,0,0], CAR.RIM],
       ['hub_rr',   'wheel_rr', [-2.9, -1.2, -1.2],[5.8, 2.4, 2.4],[0,0,0],[0,0,0], CAR.DARK],
       ['cal_rr',   'wheel_rr', [2.05, -1.8, -0.5],[0.9, 3.6, 1.0],[0,0,0],[0,0,0], CAR.RED],
-    ],
+    ], 1.146, 1.19, 1.356),
   },
 
   mashala: {
     title: '馬莎拉蹄',
     source: 'MashalaModel.createBodyLayer()',
     pivot: [0, 16, 0],
-    scale: 4.4,
-    parts: [
+    scale: 3.3,
+    // 長 5.15、寬 2.32、高 1.36 格。這台比藍爆高——GT 車是坐得進去的，不是趴著開的
+    parts: stretch([
       // 這台不是三廂房車，是**斜背雙門**：車頂之後沒有直角的行李廂，而是一路滑下去。
       // 而且駕駛艙靠後——引擎蓋佔了將近一半的長度，那個比例本身就是這一類車的識別。
-      ...slabs('body', [
+      ...hull('body', [
         [-32, 19.2, 23.2, 18, CAR2.PAINT],
         [-30.5, 18.9, 23.2, 22, CAR2.PAINT],
         [-29, 18.7, 23.2, 26, CAR2.PAINT],
@@ -651,14 +732,7 @@ const MODELS = {
         [23.5, 16.0, 23.2, 25, CAR2.PAINT],
         [25, 16.8, 23.2, 21, CAR2.PAINT],
         [26.2, 17.6, 23.2, 17, CAR2.DARK],
-      ], 1.6),
-
-      // 前擋 (z −14, y 15.0) → (z −8, y 8.0)：長 9.2、離垂直 41 度。
-      // 後擋很長（56 度），那是斜背車跟三廂房車最直接的差別
-      ['glass_f',  null, [-13.5, -4.6, -0.7],[27, 9.2, 1.4],[0, 11.5, -11],[41,0,0], CAR2.GLASS],
-      ['glass_l',  null, [-0.6, -2.25, -4.5],[1.2, 4.5, 9],[15.0, 9.75, -3.5],[0,0,0],  CAR2.GLASS],
-      ['glass_r',  null, [-0.6, -2.25, -4.5],[1.2, 4.5, 9],[-15.0, 9.75, -3.5],[0,0,0], CAR2.GLASS],
-      ['glass_b',  null, [-12.5, -4.55, -0.7],[25, 9.1, 1.4],[0, 10.45, 3.25],[-56,0,0],CAR2.GLASS],
+      ], { depth: 1.6, bands: 8, belt: { y: 15.5, colour: CAR2.GLASS, from: -13.5, to: 8, roof: [-7, -1] } }),
 
       // 一道長的門縫，不是兩道。**雙門**是這台跟四門房車的分界
       ['seam_l',   null, [-0.4, -0.5, -9],[0.8, 1.0, 18],[15.4, 17.6, -1],[0,0,0], CAR2.DARK],
@@ -709,6 +783,6 @@ const MODELS = {
       ['rim_rr',   'wheel_rr', [-2.7, -2.5, -2.5],[5.4, 5.0, 5.0],[0,0,0],[0,0,0], CAR2.RIM],
       ['hub_rr',   'wheel_rr', [-2.8, -1.1, -1.1],[5.6, 2.2, 2.2],[0,0,0],[0,0,0], CAR2.DARK],
       ['cal_rr',   'wheel_rr', [1.95, -1.7, -0.5],[0.9, 3.4, 1.0],[0,0,0],[0,0,0], CAR2.RED],
-    ],
+    ], 1.105, 1.36, 1.338),
   },
 };
