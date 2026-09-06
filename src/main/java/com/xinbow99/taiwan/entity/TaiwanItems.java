@@ -36,6 +36,8 @@ public final class TaiwanItems {
             ResourceKey.create(Registries.ITEM, Taiwan.id("lanbao"));
     public static final ResourceKey<Item> MASHALA_KEY =
             ResourceKey.create(Registries.ITEM, Taiwan.id("mashala"));
+    public static final ResourceKey<Item> TRUCK_KEY =
+            ResourceKey.create(Registries.ITEM, Taiwan.id("truck"));
 
     /** 藍爆堅尼。名字的由來見 {@link VehicleModel#LANBAO}。 */
     public static final Item LANBAO = Registry.register(
@@ -48,6 +50,12 @@ public final class TaiwanItems {
             BuiltInRegistries.ITEM, MASHALA_KEY,
             new VehicleItem(VehicleModel.MASHALA,
                     new Item.Properties().stacksTo(1).setId(MASHALA_KEY)));
+
+    /** 聯結車。低多邊形網格模型，見 {@link VehicleModel#TRUCK}。 */
+    public static final Item TRUCK = Registry.register(
+            BuiltInRegistries.ITEM, TRUCK_KEY,
+            new VehicleItem(VehicleModel.TRUCK,
+                    new Item.Properties().stacksTo(1).setId(TRUCK_KEY)));
 
     private TaiwanItems() {
     }

@@ -9,7 +9,9 @@ import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
@@ -41,6 +43,15 @@ public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderSt
      */
     private static final Map<VehicleModel, Identifier> LIT_TEXTURE = Map.of(
             VehicleModel.CYGNUS, Taiwan.id("textures/entity/cygnus_lit.png"));
+
+    /**
+     * 走網格算繪的車款，對到它的幾何資源。
+     *
+     * <p>這些車沒有 {@code ModelPart} 模型——原版的零件樹只畫得了長方體。低多邊形的車殼
+     * 走 {@code submitCustomGeometry} 直接送頂點，見 {@link MeshGeometry}。
+     */
+    private static final Map<VehicleModel, Identifier> MESH = Map.of(
+            VehicleModel.TRUCK, Taiwan.id("models/entity/truck.json"));
 
     /** 全亮的 lightmap 座標（區塊光 15、天光 15）。這個版本沒有具名常數，只能寫值。 */
     private static final int FULL_BRIGHT = 0xF000F0;
@@ -93,6 +104,29 @@ public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderSt
         state.headlight = entity.headlightOn();
     }
 
+    /**
+     * 送網格幾何。
+     *
+     * <p>回呼只給一個 {@code Pose}（沒有 PoseStack），所以骨骼的變換由 {@link MeshGeometry}
+     * 自己複製一份 Pose 去做。輪子靠名字認：以 {@code wheel_} 開頭的骨骼吃 {@code wheelSpin}。
+     *
+     * <p>用 {@code entityCutout} 而不是 {@code entityCutoutCull}：26.2 的命名跟直覺相反，
+     * 前者才是**不剔除背面**的那個。低多邊形模型不保證封閉，剔除背面會在
+     * 開口處看到破洞。多畫的那一點面在 408 個面的規模下不值得省。
+     */
+    private void submitMesh(VehicleRenderState state, PoseStack pose, SubmitNodeCollector collector) {
+        MeshGeometry.get(MESH.get(state.variant)).ifPresent(geometry ->
+                collector.submitCustomGeometry(pose,
+                        RenderTypes.entityCutout(state.variant.texture()),
+                        (p, buffer) -> {
+                            for (MeshGeometry.Bone bone : geometry.bones()) {
+                                float spin = bone.name().startsWith("wheel_") ? state.wheelSpin : 0.0f;
+                                MeshGeometry.render(bone, p, buffer,
+                                        state.lightCoords, OverlayTexture.NO_OVERLAY, -1, spin);
+                            }
+                        }));
+    }
+
     @Override
     public void submit(VehicleRenderState state, PoseStack pose,
                        SubmitNodeCollector collector, CameraRenderState camera) {
@@ -116,6 +150,13 @@ public class VehicleRenderer extends EntityRenderer<RoadVehicle, VehicleRenderSt
 
         // 模型與貼圖都由車款決定。兩者一定要一起取——拿 A 的模型配 B 的貼圖，
         // 顏色會整台錯位（色票版型雖然一樣，填的顏色不一樣）
+        if (MESH.containsKey(state.variant)) {
+            submitMesh(state, pose, collector);
+            pose.popPose();
+            super.submit(state, pose, collector, camera);
+            return;
+        }
+
         EntityModel<VehicleRenderState> model = this.models.get(state.variant);
         model.setupAnim(state);
         // 最後那個 int 是**外框顏色**，不是模型顏色。

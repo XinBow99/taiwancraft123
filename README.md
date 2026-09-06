@@ -282,6 +282,23 @@ node tools/car-icon.mjs                       # 兩款跑車的 16×16 物品圖
 
 需要 JDK 25，見上面的「快速開始」。
 
+### 對跑著的伺服器下指令
+
+```bash
+node tools/rcon.mjs "list" "give Player967 taiwan:lanbao"
+```
+
+先在 `run/server.properties` 打開 `enable-rcon=true` 並設一組 `rcon.password`。
+
+用 RCON 而不是餵 stdin 是有理由的。原本的作法是
+`tail -f run/console.in | ./gradlew runServer`，靠一條管線把指令送進伺服器的標準輸入——
+而那條管線需要有一個行程一直活著。那個行程被系統以記憶體不足砍掉過四次，
+每砍一次，伺服器的 JVM 還活著、玩家還在線上，但就再也下不了任何指令，
+只能把整個伺服器重開。RCON 是一條 TCP 連線，要用才開、用完就關，
+伺服器活著就連得上。
+
+同理，長時間跑的伺服器用 `Start-Process` 開成獨立行程，不要掛在會被回收的工作底下。
+
 ## 授權
 
 CC0-1.0。
