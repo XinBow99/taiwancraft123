@@ -42,4 +42,31 @@ public class VehicleRenderState extends EntityRenderState {
 
     /** 大燈開著。開著才會疊那層只有燈罩不透明的發光貼圖。 */
     public boolean headlight;
+
+    // ---- 網格車的動作 -------------------------------------------------------
+    //
+    // 只有藍爆用得到（見 VehicleRenderer.MESH）。方塊車的姿勢是在模型的 setupAnim 裡
+    // 算的，不走這一套。
+
+    /**
+     * 實體活了幾秒（含 partialTick）。怠速抖動與展示動作的時鐘。
+     *
+     * <p>用實體自己的 tickCount 而不是世界時間：同一個路口的兩台車該各抖各的，
+     * 用共同時鐘的話整排違停的車會一起呼吸。
+     */
+    public float clock;
+    /** 上一幀的 {@link #clock}。NaN 代表這個算繪狀態剛建立，還沒有可以做差分的基準。 */
+    public float prevClock = Float.NaN;
+
+    /** 剪刀門開到幾成（0 到 1）。 */
+    public float doorOpen;
+    /** 門正在開（而不是正在關）。決定播 doors_open 還是 doors_close。 */
+    public boolean doorOpening;
+    /** 門還要維持開著幾秒。有人上下車就重新計時。 */
+    public float doorHold;
+    /** 上一幀有沒有人在車上。用來認出「剛剛有人上下車」這一瞬間。 */
+    public boolean prevParked = true;
+
+    /** 展示模式：停著、沒人、而且旁邊有人在看。這時候門與方向盤交給 showcase 那段。 */
+    public boolean showcase;
 }

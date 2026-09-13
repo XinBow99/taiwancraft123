@@ -3,6 +3,7 @@ package com.xinbow99.taiwan.entity;
 import com.xinbow99.taiwan.TaiwanSounds;
 import com.xinbow99.taiwan.entity.goal.EightNineCrowdGoal;
 import com.xinbow99.taiwan.entity.goal.EightNineCruiseGoal;
+import com.xinbow99.taiwan.entity.goal.EightNineGreetGoal;
 import com.xinbow99.taiwan.entity.goal.EightNineRideGoal;
 import com.xinbow99.taiwan.entity.goal.EightNineTalkGoal;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -11,6 +12,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.entity.AnimationState;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
@@ -89,10 +91,49 @@ public class EightNine extends PathfinderMob {
      */
     private static final EntityDataAccessor<Boolean> DATA_CROWD =
             SynchedEntityData.defineId(EightNine.class, EntityDataSerializers.BOOLEAN);
+    /**
+     * 正在抽菸。要同步：手上那根菸只有抽的時候才畫得出來，而**菸在不在**是全部人
+     * 都看得到的事，不能各自在客戶端擲骰——不然同一個人在兩個玩家的畫面上一個叼菸一個沒有。
+     */
+    private static final EntityDataAccessor<Boolean> DATA_SMOKING =
+            SynchedEntityData.defineId(EightNine.class, EntityDataSerializers.BOOLEAN);
+
+    /**
+     * 打招呼的實體事件。
+     *
+     * <p>用事件而不是同步欄位：招呼是**一次性**的，同步欄位只表達得了狀態，
+     * 要靠翻轉一個布林值去代表「又招呼了一次」，連續兩次招呼中間沒有翻轉就會漏掉。
+     * 原版所有一次性的動作（羊駝吐口水、劫掠獸咆哮）都是走這條路。
+     *
+     * <p>90 是刻意挑的：原版的 {@code EntityEvent} 目前用到 70，留一段距離，
+     * 以後原版加新事件不會撞到。
+     */
+    private static final byte GREET_EVENT = 90;
+
+    /** 抽一次菸抽多久（tick）。{@code animation.smoke} 是八秒一輪，這裡是兩輪。 */
+    private static final int SMOKE_TICKS = 320;
+    /** 兩次抽菸之間至少隔多久（tick）。 */
+    private static final int SMOKE_GAP = 600;
 
     /** 附近的同伴數。只存在伺服器端，客戶端只需要知道成團與否。 */
     private int courage;
     private int recount;
+    /** 這根菸還要抽幾 tick。0 代表沒在抽。只有伺服器端有意義。 */
+    private int smokeLeft;
+    /** 距離下一次能點菸還有幾 tick。 */
+    private int smokeCooldown;
+
+    // ---- 算繪端的動作狀態 ---------------------------------------------------
+    //
+    // 這三個只有客戶端在動（{@link #tick} 裡有 isClientSide 的分支），但欄位放在實體上
+    // 而不是算繪狀態上：算繪狀態每一幀重建的語意是「抄一份快照」，而動畫要記得
+    // 「從哪一個 tick 開始播」——那是跨幀的，必須有個活得比一幀久的地方放。
+    //
+    // 走路沒有對應的一份：它是靠 walkAnimationPos 驅動的，不吃時間，所以不需要狀態。
+
+    public final AnimationState idleAnimationState = new AnimationState();
+    public final AnimationState greetAnimationState = new AnimationState();
+    public final AnimationState smokeAnimationState = new AnimationState();
 
     public EightNine(EntityType<? extends EightNine> type, Level level) {
         super(type, level);
@@ -116,11 +157,14 @@ public class EightNine extends PathfinderMob {
         // 騎車排在群聚前面：騎上車之後就不該再用走的去找同伴了
         this.goalSelector.addGoal(2, new EightNineCruiseGoal(this));
         this.goalSelector.addGoal(3, new EightNineRideGoal(this));
-        this.goalSelector.addGoal(4, new EightNineCrowdGoal(this));
-        this.goalSelector.addGoal(5, new EightNineTalkGoal(this));
-        this.goalSelector.addGoal(6, new WaterAvoidingRandomStrollGoal(this, 0.8));
-        this.goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0f));
-        this.goalSelector.addGoal(8, new RandomLookAroundGoal(this));
+        // 招呼排在群聚與閒晃前面：擦身而過的那一下要當場有反應，
+        // 排在後面的話正在走向同伴的人永遠不會停下來看你一眼
+        this.goalSelector.addGoal(4, new EightNineGreetGoal(this));
+        this.goalSelector.addGoal(5, new EightNineCrowdGoal(this));
+        this.goalSelector.addGoal(6, new EightNineTalkGoal(this));
+        this.goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 0.8));
+        this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0f));
+        this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
 
         // 打一個，附近的同伴全部轉頭。這是原版就有的機制
         this.targetSelector.addGoal(1, new HurtByTargetGoal(this, EightNine.class)
@@ -132,6 +176,7 @@ public class EightNine extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(DATA_VARIANT, EightNineVariant.TEMPLE.ordinal());
         builder.define(DATA_CROWD, false);
+        builder.define(DATA_SMOKING, false);
     }
 
     public EightNineVariant variant() {
@@ -140,6 +185,21 @@ public class EightNine extends PathfinderMob {
 
     public void setVariant(EightNineVariant variant) {
         this.entityData.set(DATA_VARIANT, variant.ordinal());
+    }
+
+    /** 抽菸中。算繪端靠它決定手上那根菸畫不畫。 */
+    public boolean isSmoking() {
+        return this.entityData.get(DATA_SMOKING);
+    }
+
+    /**
+     * 讓所有看得到他的客戶端播一次招呼。
+     *
+     * <p>伺服器端專用——{@code broadcastEntityEvent} 在客戶端是沒有作用的空操作，
+     * 所以不會有「自己招呼給自己看」這種事。
+     */
+    public void triggerGreet() {
+        this.level().broadcastEntityEvent(this, GREET_EVENT);
     }
 
     /** 成團中。算繪端與音樂都看它。 */
@@ -155,9 +215,72 @@ public class EightNine extends PathfinderMob {
     @Override
     public void tick() {
         super.tick();
-        if (!this.level().isClientSide() && this.recount-- <= 0) {
+        if (this.level().isClientSide()) {
+            tickAnimations();
+            return;
+        }
+        if (this.recount-- <= 0) {
             this.recount = RECOUNT;
             updateCourage();
+        }
+        tickSmoking();
+    }
+
+    /**
+     * 客戶端：把三段動作開開關關。
+     *
+     * <p>{@code animateWhen} 是冪等的——條件成立時「若尚未開始才開始」，
+     * 所以每 tick 呼叫不會讓動畫一直從頭播。
+     *
+     * <p>站著的動作只在**真的站著**時播。用 {@code walkAnimation.isMoving()} 而不是
+     * 速度是否為零：後者在被推、在水裡漂的時候也是非零，站著的人會一直抽搐。
+     */
+    private void tickAnimations() {
+        this.idleAnimationState.animateWhen(!this.walkAnimation.isMoving(), this.tickCount);
+        this.smokeAnimationState.animateWhen(isSmoking(), this.tickCount);
+    }
+
+    /**
+     * 伺服器端：什麼時候點一根。
+     *
+     * <p>只有**站著**才會點菸，而且走起來就掐掉——抽菸那段動作是手舉到嘴邊的，
+     * 邊走邊抽會跟走路的擺手打架。這也剛好是對的：真的要抽會先停下來。
+     */
+    private void tickSmoking() {
+        if (this.smokeLeft > 0) {
+            this.smokeLeft--;
+            if (this.smokeLeft == 0 || this.walkAnimation.isMoving() || this.isInWater()) {
+                this.smokeLeft = 0;
+                this.smokeCooldown = SMOKE_GAP;
+                this.entityData.set(DATA_SMOKING, false);
+            }
+            return;
+        }
+        if (this.smokeCooldown > 0) {
+            this.smokeCooldown--;
+            return;
+        }
+        // 站著、沒在水裡、而且骰到——一百二十分之一，平均六秒一次機會，
+        // 所以一群人不會同時點菸
+        if (!this.walkAnimation.isMoving() && !this.isInWater()
+                && this.getRandom().nextInt(120) == 0) {
+            this.smokeLeft = SMOKE_TICKS;
+            this.entityData.set(DATA_SMOKING, true);
+        }
+    }
+
+    /**
+     * 收到招呼事件就播一次。
+     *
+     * <p>{@code start} 而不是 {@code startIfStopped}：連續兩次招呼要從頭播，
+     * 不是接在上一次還沒播完的地方。
+     */
+    @Override
+    public void handleEntityEvent(byte event) {
+        if (event == GREET_EVENT) {
+            this.greetAnimationState.start(this.tickCount);
+        } else {
+            super.handleEntityEvent(event);
         }
     }
 

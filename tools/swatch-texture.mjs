@@ -34,7 +34,9 @@ const LAYOUTS = {
 
 const PALETTES = {
   // 兩款跑車。槽位順序：PAINT DARK GLASS LAMP ｜ RED TIRE RIM CHROME
-  lanbao:  ['#f2c318', '#161719', '#232a31', '#f2f5f7', '#d2342c', '#141416', '#5f656b', '#b0b6bc'],
+  // 車身改成紅的了（models/tools/restyle-new-lambo-red.js），道具圖示要跟著換，
+  // 不然背包裡是一台黃車、放出來是一台紅車
+  lanbao:  ['#dc262c', '#161719', '#232a31', '#f2f5f7', '#921923', '#141416', '#8d9298', '#b0b6bc'],
   mashala: ['#1f4fc8', '#15171a', '#28303a', '#f2f5f7', '#c93028', '#141416', '#6e747a', '#cfd4d8'],
   // BODY DARK SEAT TIRE / CHROME LAMP AMBER BRAKE
   classic: ['#2f3237', '#212429', '#191b1e', '#121417', '#b9c0c6', '#e9e4d8', '#e08a2c', '#b4302c'],

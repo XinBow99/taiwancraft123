@@ -10,18 +10,21 @@ import net.minecraft.resources.Identifier;
 /**
  * 8+9 的算繪器。
  *
- * <p>六型共用一個模型與一個算繪器，差別只在貼圖（{@code EightNineVariant.texture()}）
- * 與配件的開關（在模型的 {@code setupAnim} 裡）。開六個算繪器等於把同一份幾何烘六次。
+ * <p>六型共用一個模型、一個算繪器與**一張貼圖**。以前每一型各有一張色票貼圖，
+ * 那是舊模型（體素堆的方塊人）的版型；巴嘎囧這一版是照真人比例做的，
+ * 衣服的圖樣直接畫在貼圖上，換色會把刺青與破洞一起換掉。型的差別現在只在台詞。
  *
  * <p>{@code 0.35f} 是陰影半徑，約等於碰撞箱寬（0.6）的一半——陰影比實體大會讓人看起來浮空。
  */
-public class EightNineRenderer extends MobRenderer<EightNine, EightNineRenderState, EightNineModel> {
+public class EightNineRenderer extends MobRenderer<EightNine, EightNineRenderState, BargarjungModel> {
 
     public static final ModelLayerLocation LAYER =
-            new ModelLayerLocation(Taiwan.id("eightnine"), "main");
+            new ModelLayerLocation(Taiwan.id("bargarjung"), "main");
+
+    private static final Identifier TEXTURE = Taiwan.id("textures/entity/bargarjung.png");
 
     public EightNineRenderer(EntityRendererProvider.Context context) {
-        super(context, new EightNineModel(context.bakeLayer(LAYER)), 0.35f);
+        super(context, new BargarjungModel(context.bakeLayer(LAYER)), 0.35f);
     }
 
     @Override
@@ -34,10 +37,15 @@ public class EightNineRenderer extends MobRenderer<EightNine, EightNineRenderSta
         super.extractRenderState(entity, state, partialTick);
         state.variant = entity.variant();
         state.inCrowd = entity.inCrowd();
+        state.smoking = entity.isSmoking();
+        // copyFrom 而不是持有參考，理由見 EightNineRenderState
+        state.idleAnimationState.copyFrom(entity.idleAnimationState);
+        state.greetAnimationState.copyFrom(entity.greetAnimationState);
+        state.smokeAnimationState.copyFrom(entity.smokeAnimationState);
     }
 
     @Override
     public Identifier getTextureLocation(EightNineRenderState state) {
-        return state.variant.texture();
+        return TEXTURE;
     }
 }

@@ -43,6 +43,10 @@ public enum VehicleModel implements StringRepresentable {
      *
      * <p>調校：極速 260、破百 3.4 秒、抓地力是機車的兩倍多。**壓車角度是 0**——
      * 四個輪子的車不會倒，那一項留著的話過彎時整台會像船一樣側翻。
+     *
+     * <p>這一台跟另外兩台**不是同一種模型**：它是低多邊形網格（見 {@code MeshGeometry}），
+     * 不是長方體堆出來的，而且帶骨架與動作——剪刀門、轉向節、懸吊都動得起來。
+     * 幾何由 {@code tools/bake-lambo.mjs} 從 {@code models/new_lambo.bbmodel} 烘出來。
      */
     LANBAO("lanbao", Kind.CAR, 2.2f, 1.3f, 0.25f, 0.15f, 0.25f, 0.15f,
             260f, 3.4f, 0.150, 0.165, 34f, 7f, 0f),
@@ -57,20 +61,7 @@ public enum VehicleModel implements StringRepresentable {
      * 不是最快的那一種。
      */
     MASHALA("mashala", Kind.CAR, 2.2f, 1.45f, 0.35f, 0.30f, 0.35f, 0.30f,
-            240f, 4.2f, 0.135, 0.150, 32f, 6.5f, 0f),
-
-    /**
-     * 聯結車。
-     *
-     * <p>這一台跟前面三台**不是同一種模型**：它是低多邊形網格（見 {@code MeshGeometry}），
-     * 不是長方體堆出來的。留著它有兩個理由——一是驗證那條算繪管線，二是當對照組：
-     * 整台 408 個面，比體素化的超跑少五倍，而且沒有階梯。
-     *
-     * <p>調校是照噸位給的：極速 110、破百 20 秒、抓地力低、轉向鎖角小。
-     * 開起來應該要覺得笨重，那是它的賣點不是缺點。
-     */
-    TRUCK("truck", Kind.CAR, 2.4f, 2.8f, 1.55f, -1.30f, 1.55f, -1.30f,
-            110f, 20f, 0.090, 0.100, 26f, 5f, 0f);
+            240f, 4.2f, 0.135, 0.150, 32f, 6.5f, 0f);
 
     /** 兩輪還是四輪。決定的是「會不會壓車」與「幾個座位」這類整類共通的事。 */
     public enum Kind { SCOOTER, CAR }

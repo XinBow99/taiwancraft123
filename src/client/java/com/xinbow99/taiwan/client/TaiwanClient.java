@@ -4,10 +4,9 @@ import com.xinbow99.taiwan.Taiwan;
 import com.xinbow99.taiwan.client.entity.MacaqueModel;
 import com.xinbow99.taiwan.client.entity.MacaqueRenderer;
 import com.xinbow99.taiwan.client.entity.CygnusModel;
-import com.xinbow99.taiwan.client.entity.LanbaoModel;
 import com.xinbow99.taiwan.client.entity.MashalaModel;
 import com.xinbow99.taiwan.client.entity.EightNineAnthemInstance;
-import com.xinbow99.taiwan.client.entity.EightNineModel;
+import com.xinbow99.taiwan.client.entity.BargarjungModel;
 import com.xinbow99.taiwan.client.entity.EightNineRenderer;
 import com.xinbow99.taiwan.client.entity.VehicleRenderer;
 import com.xinbow99.taiwan.client.entity.VehicleSoundInstance;
@@ -36,12 +35,11 @@ public class TaiwanClient implements ClientModInitializer {
 		ModelLayerRegistry.registerModelLayer(MacaqueRenderer.LAYER, MacaqueModel::createBodyLayer);
 		EntityRendererRegistry.register(TaiwanEntities.MACAQUE, MacaqueRenderer::new);
 
-		ModelLayerRegistry.registerModelLayer(EightNineRenderer.LAYER, EightNineModel::createBodyLayer);
+		ModelLayerRegistry.registerModelLayer(EightNineRenderer.LAYER, BargarjungModel::createBodyLayer);
 		EntityRendererRegistry.register(TaiwanEntities.EIGHTNINE, EightNineRenderer::new);
 
 		// 兩款車共用同一個實體種類與算繪器，但各有自己的零件樹，所以 layer 要各註冊一個
 		ModelLayerRegistry.registerModelLayer(VehicleRenderer.CYGNUS_LAYER, CygnusModel::createBodyLayer);
-		ModelLayerRegistry.registerModelLayer(VehicleRenderer.LANBAO_LAYER, LanbaoModel::createBodyLayer);
 		ModelLayerRegistry.registerModelLayer(VehicleRenderer.MASHALA_LAYER, MashalaModel::createBodyLayer);
 		// 汽車跟機車是同一個算繪器（同一個 Java 類別），只是不同的 entity type
 		EntityRendererRegistry.register(TaiwanEntities.CAR, VehicleRenderer::new);

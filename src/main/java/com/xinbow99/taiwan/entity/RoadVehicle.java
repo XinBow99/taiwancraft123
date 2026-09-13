@@ -869,7 +869,6 @@ public class RoadVehicle extends VehicleEntity {
             case CYGNUS -> TaiwanItems.CYGNUS;
             case LANBAO -> TaiwanItems.LANBAO;
             case MASHALA -> TaiwanItems.MASHALA;
-            case TRUCK -> TaiwanItems.TRUCK;
         };
     }
 

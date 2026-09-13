@@ -44,3 +44,8 @@ logs/
 
 # Windows 的 /dev/null 替身，誤產生的空檔
 nul
+
+# Blockbench 建模過程的中繼快照。每一步存一份是為了出錯時回得去，
+# 不是要留成歷史——版本歷史交給 git，這些檔案加起來十幾 MB 而且沒人會回頭看
+models/*.before-*.bbmodel
+models/*.yellow-backup.bbmodel
